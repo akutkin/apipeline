@@ -1,0 +1,96 @@
+#:===========================================================================
+# Settings for imcal
+#:===========================================================================
+####################### DICAL IMAGING #######################
+
+#global:
+#    dppp_bin: 'DPPP' # on blizzard
+#    wsclean_bin: 'wsclean'
+#    makesourcedb_bin: 'makesourcedb'
+#    bbs2model_bin: 'bbs2model'
+#    render_bin: 'render'
+
+split1:
+    startchan: 40 # start channel to split from
+    nchan: 0 # 0 means till the end
+
+clean1: # wsclean setup
+    imagesize: 3072
+    pixelsize: 3 
+    multifreq: 8  
+    automask: 20
+    autothresh: 5
+    multiscale: False
+    kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3' # use this for additional wsclean options, e.g. '-weight uniform -use-idg' 
+
+dical1: # DPPP setup for direction independent calibration
+    solint: 20
+    mode: 'phaseonly'
+    uvlambdamin: 500 # Ignore baselines / channels with UV < uvlambdamin wavelengths.
+#    cal_nchan: 31 # number of chans with the same solutions
+
+clean2:
+    imagesize: 3072
+    pixelsize: 3 
+    multifreq: 8  
+    automask: 6
+    autothresh: 1
+    multiscale: True
+    kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3'
+    
+dical2:
+    solint: 1
+    mode: 'phaseonly'
+    uvlambdamin: 500 # Ignore baselines / channels with UV < uvlambdamin wavelengths.
+    cal_nchan: 31 # number of chans with the same solutions
+
+clean3:
+    imagesize: 3072
+    pixelsize: 3 
+    multifreq: 8  
+    automask: 6
+    autothresh: 1
+    multiscale: True
+    kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3'
+    
+dical3:
+    solint: 1000
+    mode: 'diagonal'
+    uvlambdamin: 500 # Ignore baselines / channels with UV < uvlambdamin wavelengths.
+    cal_nchan: 31 # number of chans with the same solutions
+    
+clean4:
+    imagesize: 3072
+    pixelsize: 3
+    multifreq: 8
+    automask: 4.5
+    autothresh: 0.5
+    multiscale: True
+    kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3 -weight briggs -1.0'
+
+### END
+
+####################### CLUSTERING #######################
+#cluster:
+#    nbright: 80 # number of brightest clean components (CC) to check for artefacts
+#    boxsize: 250 # the boxsize around CC in pixels where to check for artefacts
+#    nclusters: 10 # number of clusters ('auto' -- to set automatically)
+#    cluster_radius: 5 # arcmin
+#    cluster_overlap: 1.6 # if lower than 2 clusters can intersect
+#    auto: True
+#    add_manual: False
+#
+######################## DD CALIBRATION #######################
+#ddcal: # see DPPP/DDECal documentation
+#    solint: 120 # Solution interval in timesteps (1 ~ 30sec for Apertif).
+#    mode: 'diagonal' # Type of constraint to apply. 
+#    nchan: 15 # Number of channels in each channel block, for which the solution is assumed to be constant.
+#    startchan: 0
+#    nchan: 192
+#    uvlambdamin: 500 # Ignore baselines / channels with UV < uvlambdamin wavelengths.
+#
+## TODO:    
+#plotsols:
+#    
+
+    
