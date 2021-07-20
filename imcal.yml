@@ -14,14 +14,20 @@ split1:
     startchan: 40 # start channel to split from
     nchan: 0 # 0 means till the end
 
+clean0: # initial clean
+    max_over_thresh: 250 # the threshold for initial CLEAN is set to image_max/max_over_thresh
+
+    
 clean1: # wsclean setup
     imagesize: 3072
     pixelsize: 3 
-    multifreq: 8  
+    multifreq: 0
     automask: 20
     autothresh: 5
+    usefitsmask: True
+    fitsmaskname: 'mask0.fits'
     multiscale: False
-    kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3' # use this for additional wsclean options, e.g. '-weight uniform -use-idg' 
+    kwstring: '-use-wgridder -parallel-deconvolution 1400' # use this for additional wsclean options, e.g. '-weight uniform -use-idg' 
 
 dical1: # DPPP setup for direction independent calibration
     solint: 20
@@ -33,8 +39,10 @@ clean2:
     imagesize: 3072
     pixelsize: 3 
     multifreq: 8  
-    automask: 6
-    autothresh: 1
+    automask: 10
+    autothresh: 5
+    usefitsmask: True
+    fitsmaskname: 'mask0.fits'
     multiscale: True
     kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3'
     
@@ -48,13 +56,15 @@ clean3:
     imagesize: 3072
     pixelsize: 3 
     multifreq: 8  
-    automask: 6
-    autothresh: 1
+    automask: 7
+    autothresh: 3.5
+    usefitsmask: True
+    fitsmaskname: 'mask1.fits'
     multiscale: True
     kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3'
     
 dical3:
-    solint: 1000
+    solint: 800
     mode: 'diagonal'
     uvlambdamin: 500 # Ignore baselines / channels with UV < uvlambdamin wavelengths.
     cal_nchan: 31 # number of chans with the same solutions
@@ -66,6 +76,8 @@ clean4:
     automask: 4.5
     autothresh: 0.5
     multiscale: True
+    usefitsmask: True
+    fitsmaskname: 'mask2.fits'
     kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3 -weight briggs -1.0'
 
 ### END

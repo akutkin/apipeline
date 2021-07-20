@@ -34,6 +34,12 @@ makesourcedb_bin = distutils.spawn.find_executable('makesourcedb') or '/home/off
 bbs2model_bin = distutils.spawn.find_executable('bbs2model') or '/home/offringa/Software/lofartools/build/bbs2model'
 render_bin = distutils.spawn.find_executable('render') or '/home/offringa/Software/lofartools/build/render'
 
+# Tom's masking code
+makeMaskFits = '/home/kutkin/rapthor/makeMaskFits'
+makeNoiseMapFits = '/home/kutkin/rapthor/makeNoiseMapFits'
+cfitsio_dir = '/home/kutkin/lib/cfitsio-3.49'
+
+
 _POOL_TIME = 300 # SECONDS
 _MAX_TIME = 1 * 3600 # SECONDS
 _MAX_POOL = _MAX_TIME // _POOL_TIME
@@ -48,36 +54,61 @@ def modify_filename(fname, string, ext=None):
 
 
 def wsclean(msin, outname=None, pixelsize=3, mgain=0.8, imagesize=3072, multifreq=8, autothresh=0.3,
-            automask=3, multiscale=False, kwstring=''):
+            automask=3, niter=1000000, multiscale=False, save_source_list=True,
+            usefitsmask=False, fitsmaskname='mask.fits',
+            kwstring=''):
     """
     wsclean
     """
-    # wsclean_bin = subprocess.check_output('which wsclean; exit 0', shell=True).strip() or '/home/soft/wsclean/wsclean/build/wsclean'
-    # logging.debug('wsclean binary: {}'.format(wsclean_bin))
     msbase = os.path.splitext(msin)[0]
     if outname is None:
         outname = msbase
-
     if multiscale:
         kwstring += ' -multiscale'
     if autothresh is not None:
         kwstring += f' -auto-threshold {autothresh}'
+    if automask is not None:
+        kwstring += f' -auto-mask {automask}'
+    if mgain is not None:
+        kwstring += f' -mgain {mgain}'
+    if save_source_list:
+        kwstring += ' -save-source-list'
     if multifreq:
         kwstring += f' -join-channels -channels-out {multifreq} -fit-spectral-pol 2'
-    cmd = f'{wsclean_bin} -name {outname} -size {imagesize} {imagesize} -scale {pixelsize}asec -niter 1000000 \
-              -auto-mask {automask} -save-source-list -mgain {mgain} {kwstring} {msin}'
-              # .\
-              # format(wsclean=wsclean_bin, outname=outname, pix=pixelsize, autothresh=autothresh,
-                     # automask=automask, imsize=imagesize, kwstring=kwstring, msin=msin)
+    if usefitsmask:
+        kwstring += f' -fits-mask {fitsmaskname}'
+
+    cmd = f'{wsclean_bin} -name {outname} -size {imagesize} {imagesize} -scale {pixelsize}asec -niter {niter} \
+            {kwstring} {msin}'
     cmd = " ".join(cmd.split())
     logging.debug("Running command: %s", cmd)
     subprocess.call(cmd, shell=True)
 
-    if multifreq:
-        for fname in glob.glob(msbase+'-*.fits'):
-            newname = fname.replace('MFS-', '')
-            os.rename(fname, newname)
+    for fname in glob.glob(outname+'*.fits'):
+        newname = fname.replace('MFS-', '')
+        os.rename(fname, newname)
     return 0
+
+
+def create_mask(imgfits, residfits, clipval, outname='mask.fits'):
+    """
+    Create mask using Tom's code (e-mail on 1 Jul 2021)
+    """
+    if not cfitsio_dir in os.environ['LD_LIBRARY_PATH']:
+        os.environ['LD_LIBRARY_PATH'] += f':{cfitsio_dir}'
+
+    subprocess.call(f'{makeNoiseMapFits} {imgfits} {residfits} noise.fits noiseMap.fits', shell=True)
+    subprocess.call(f'{makeMaskFits} noiseMap.fits {outname} {clipval}', shell=True)
+    return outname
+
+
+def get_image_max(msin):
+    """
+    Determine maximum image value for msin
+    """
+    cmd = f'{wsclean_bin} -niter 0 -size 3072 3072 -scale 3arcsec -use-wgridder {msin}'
+    subprocess.call(cmd, shell=True)
+    return np.nanmax(fits.getdata('wsclean-image.fits'))
 
 
 def makesourcedb(modelfile, out=None):
@@ -152,7 +183,7 @@ def split_ms(msin_path, startchan, nchan=0, msout_path=''):
 
 
 def dical(msin, srcdb, msout=None, h5out=None, solint=1, startchan=0, split_nchan=0,
-          mode='phaseonly', cal_nchan=31, uvlambdamin=500):
+          mode='phaseonly', cal_nchan=0, uvlambdamin=500):
     """ direction independent calibration with DPPP """
     h5out = h5out or modify_filename(msin, f'_dical_dt{solint}_{mode}', ext='.h5')
     msout = msout or modify_filename(msin, f'_dical_dt{solint}_{mode}')
@@ -215,7 +246,7 @@ def phase_shift(msin, new_center, msout=None):
     subprocess.call(cmd, shell=True)
 
 
-def view_sols(h5param):
+def view_sols(h5param, outname=None):
     """ read and plot the gains """
     path = os.path.split(os.path.abspath(h5param))[0]
     def plot_sols(h5param, key):
@@ -244,17 +275,18 @@ def view_sols(h5param):
                     ax.set_xlabel('Time (hrs)')
         return fig, ax
 
-    try:
-        fig, ax = plot_sols(h5param, 'amplitude000')
-        fig.savefig(path + '/amp_sols.png')
-    except:
-        logging.error('No amplitude solutions found')
+    if outname is not None:
+        try:
+            fig1, ax1 = plot_sols(h5param, 'amplitude000')
+            fig1.savefig(f'{outname}_amp.png')
+        except:
+            logging.error('No amplitude solutions found')
 
-    try:
-        fig, ax = plot_sols(h5param, 'phase000')
-        fig.savefig(path + '/phase_sols.png')
-    except:
-        logging.error('No phase solutions found')
+        try:
+            fig2, ax2 = plot_sols(h5param, 'phase000')
+            fig2.savefig(f'{outname}_phase.png')
+        except:
+            logging.error('No phase solutions found')
 
     # plt.show()
 
@@ -299,10 +331,15 @@ def main(msin, outbase=None, cfgfile='imcal.yml'):
 
     ms_split = msbase + '_splt.MS'
 
+    img0 = outbase + '_0'
     img1 = outbase + '_1'
     img2 = outbase + '_2'
     img3 = outbase + '_3'
     img_final = outbase
+
+    mask0 = 'mask0.fits'
+    mask1 = 'mask1.fits'
+    mask2 = 'mask2.fits'
 
     model1 = outbase + '_model1.sourcedb'
     model2 = outbase + '_model2.sourcedb'
@@ -326,7 +363,15 @@ def main(msin, outbase=None, cfgfile='imcal.yml'):
 
 # Clean + DIcal
 
-    # img_peak = fits.getdata('
+
+    if not os.path.exists(img0 +'-image.fits') and (not os.path.exists(img0 +'-MFS-image.fits')):
+        img_max = get_image_max(ms_split)
+        threshold = img_max/cfg['clean0']['max_over_thresh']
+        wsclean(ms_split, outname=img0, automask=None, save_source_list=False, multifreq=False, mgain=None,
+            kwstring=f'-threshold {threshold}')
+        create_mask(img0 +'-image.fits', img0 +'-residual.fits', clipval=20, outname='mask0.fits')
+
+# clean1
     if not os.path.exists(img1 +'-image.fits') and (not os.path.exists(img1 +'-MFS-image.fits')):
         wsclean(ms_split, outname=img1, **cfg['clean1']) # fast shallow clean
 
@@ -335,28 +380,31 @@ def main(msin, outbase=None, cfgfile='imcal.yml'):
 
     if not os.path.exists(dical1):
         dical1 = dical(ms_split, model1, msout=dical1, h5out=h5_1, **cfg['dical1'])
-        view_sols(h5_1)
-
+        view_sols(h5_1, outname='dical1')
+# clean2
     if (not os.path.exists(img2 +'-image.fits')) and (not os.path.exists(img2 +'-MFS-image.fits')):
         wsclean(dical1, outname=img2, **cfg['clean2'])
+        create_mask(img2 +'-image.fits', img2 +'-residual.fits', clipval=7, outname='mask1.fits')
 
     if not os.path.exists(model2):
         makesourcedb(img2+'-sources.txt', out=model2)
 
     if not os.path.exists(dical2):
         dical2 = dical(dical1, model2, msout=dical2, h5out=h5_2, **cfg['dical2'])
-        view_sols(h5_2)
-
+        view_sols(h5_2, outname='dical2')
+# clean3
     if (not os.path.exists(img3 +'-image.fits')) and (not os.path.exists(img3 +'-MFS-image.fits')):
         wsclean(dical2, outname=img3, **cfg['clean3'])
+        create_mask(img3 +'-image.fits', img3 +'-residual.fits', clipval=5, outname='mask2.fits')
 
     if not os.path.exists(model3):
         makesourcedb(img3+'-sources.txt', out=model3)
 
     if not os.path.exists(dical3):
         dical3 = dical(dical2, model3, msout=dical3, h5out=h5_3, **cfg['dical3'])
-        view_sols(h5_3)
+        view_sols(h5_3, outname='dical3')
 
+# clean4
     if (not os.path.exists(img_final +'-image.fits')) and (not os.path.exists(img_final +'-MFS-image.fits')):
         wsclean(dical3, outname=img_final, **cfg['clean4'])
 
