@@ -1,7 +1,7 @@
 #:===========================================================================
 # Settings for imcal
 #:===========================================================================
-####################### DICAL IMAGING #######################
+####################### IMAGING #######################
 
 #global:
 #    dppp_bin: 'DPPP' # on blizzard
@@ -22,10 +22,10 @@ clean1: # wsclean setup
     imagesize: 3072
     pixelsize: 3 
     multifreq: 0
+    mgain: 0
     automask: 20
     autothresh: 5
-    usefitsmask: True
-    fitsmaskname: 'mask0.fits'
+    fitsmask: 'mask0.fits'
     multiscale: False
     kwstring: '-use-wgridder -parallel-deconvolution 1400' # use this for additional wsclean options, e.g. '-weight uniform -use-idg' 
 
@@ -41,8 +41,7 @@ clean2:
     multifreq: 8  
     automask: 10
     autothresh: 5
-    usefitsmask: True
-    fitsmaskname: 'mask0.fits'
+    fitsmask: 'mask0.fits'
     multiscale: True
     kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3'
     
@@ -58,8 +57,7 @@ clean3:
     multifreq: 8  
     automask: 7
     autothresh: 3.5
-    usefitsmask: True
-    fitsmaskname: 'mask1.fits'
+    fitsmask: 'mask1.fits'
     multiscale: True
     kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3'
     
@@ -67,7 +65,7 @@ dical3:
     solint: 800
     mode: 'diagonal'
     uvlambdamin: 500 # Ignore baselines / channels with UV < uvlambdamin wavelengths.
-    cal_nchan: 31 # number of chans with the same solutions
+    cal_nchan: 30 # number of chans with the same solutions
     
 clean4:
     imagesize: 3072
@@ -76,9 +74,8 @@ clean4:
     automask: 4.5
     autothresh: 0.5
     multiscale: True
-    usefitsmask: True
-    fitsmaskname: 'mask2.fits'
-    kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3 -weight briggs -1.0'
+    fitsmask: 'mask2.fits'
+    kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3 -weight briggs 0.0'
 
 ### END
 

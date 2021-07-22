@@ -28,11 +28,11 @@ import astropy.units as u
 from astropy.io import fits
 
 # the executables:
-dppp_bin = distutils.spawn.find_executable('DPPP') or '/home/offringa/Software/DP3/build/DP3'
-wsclean_bin = distutils.spawn.find_executable('wsclean') or '/home/offringa/Software/wsclean/build/wsclean'
-makesourcedb_bin = distutils.spawn.find_executable('makesourcedb') or '/home/offringa/Software/DP3/build/makesourcedb'
-bbs2model_bin = distutils.spawn.find_executable('bbs2model') or '/home/offringa/Software/lofartools/build/bbs2model'
-render_bin = distutils.spawn.find_executable('render') or '/home/offringa/Software/lofartools/build/render'
+dppp_bin = distutils.spawn.find_executable('DPPP')
+wsclean_bin = distutils.spawn.find_executable('wsclean')
+makesourcedb_bin = distutils.spawn.find_executable('makesourcedb')
+bbs2model_bin = distutils.spawn.find_executable('bbs2model')
+render_bin = distutils.spawn.find_executable('render')
 
 # Tom's masking code
 makeMaskFits = '/home/kutkin/rapthor/makeMaskFits'
@@ -53,10 +53,10 @@ def modify_filename(fname, string, ext=None):
     return fbase + string + fext
 
 
-def wsclean(msin, outname=None, pixelsize=3, mgain=0.8, imagesize=3072, multifreq=8, autothresh=0.3,
-            automask=3, niter=1000000, multiscale=False, save_source_list=True,
-            usefitsmask=False, fitsmaskname='mask.fits',
-            kwstring=''):
+def wsclean(msin, outname=None, pixelsize=3, imagesize=3072, mgain=0.8, multifreq=0, autothresh=0.3,
+            automask=3, niter=1000000, multiscale=False, save_source_list=False,
+            clearfiles=True,
+            fitsmask=None, kwstring=''):
     """
     wsclean
     """
@@ -69,14 +69,14 @@ def wsclean(msin, outname=None, pixelsize=3, mgain=0.8, imagesize=3072, multifre
         kwstring += f' -auto-threshold {autothresh}'
     if automask is not None:
         kwstring += f' -auto-mask {automask}'
-    if mgain is not None:
+    if mgain:
         kwstring += f' -mgain {mgain}'
     if save_source_list:
         kwstring += ' -save-source-list'
     if multifreq:
         kwstring += f' -join-channels -channels-out {multifreq} -fit-spectral-pol 2'
-    if usefitsmask:
-        kwstring += f' -fits-mask {fitsmaskname}'
+    if fitsmask:
+        kwstring += f' -fits-mask {fitsmask}'
 
     cmd = f'{wsclean_bin} -name {outname} -size {imagesize} {imagesize} -scale {pixelsize}asec -niter {niter} \
             {kwstring} {msin}'
@@ -87,6 +87,11 @@ def wsclean(msin, outname=None, pixelsize=3, mgain=0.8, imagesize=3072, multifre
     for fname in glob.glob(outname+'*.fits'):
         newname = fname.replace('MFS-', '')
         os.rename(fname, newname)
+    if clearfiles:
+        todelete = glob.glob(f'{outname}-000[0-9]-*.fits') # multifreq images
+        for f in todelete:
+            os.remove(f)
+
     return 0
 
 
