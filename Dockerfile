@@ -129,25 +129,24 @@ RUN cd /software/makemask && \
     cp makeMaskFits makeNoiseMapFits /usr/local/bin/
     
 # kvis
-RUN cd /software && \
-    apt-get install -y libxaw7 && \
-    wget ftp://ftp.atnf.csiro.au/pub/software/karma/karma-1.7.25-common.tar.bz2 && \
-    wget ftp://ftp.atnf.csiro.au/pub/software/karma/karma-1.7.25-amd64_Linux_libc6.3.tar.bz2 && \
-    tar -xvf karma-1.7.25-amd64_Linux_libc6.3.tar.bz2 && \
-    tar -xvf karma-1.7.25-common.tar.bz2 && \
-    mv karma-1.7.25 /usr/local/karma && \
-    ln -s /usr/local/karma/amd64_Linux_libc6.3/bin/./kvis /usr/local/bin/kvis && \
-    ln -s /usr/local/karma/amd64_Linux_libc6.3/bin/./kshell /usr/local/bin/kshell && \
-    ln -s /usr/local/karma/amd64_Linux_libc6.3/bin/./kpvslice /usr/local/bin/kpvslice
-
-ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/karma/amd64_Linux_libc6.3/lib/ 
-ENV KARMABASE="/usr/local/karma/amd64_Linux_libc6.3"
+#RUN cd /software && \
+#    apt-get install -y libxaw7 && \
+#    wget ftp://ftp.atnf.csiro.au/pub/software/karma/karma-1.7.25-common.tar.bz2 && \
+#    wget ftp://ftp.atnf.csiro.au/pub/software/karma/karma-1.7.25-amd64_Linux_libc6.3.tar.bz2 && \
+#    tar -xvf karma-1.7.25-amd64_Linux_libc6.3.tar.bz2 && \
+#    tar -xvf karma-1.7.25-common.tar.bz2 && \
+#    mv karma-1.7.25 /usr/local/karma && \
+#    ln -s /usr/local/karma/amd64_Linux_libc6.3/bin/./kvis /usr/local/bin/kvis && \
+#    ln -s /usr/local/karma/amd64_Linux_libc6.3/bin/./kshell /usr/local/bin/kshell && \
+#    ln -s /usr/local/karma/amd64_Linux_libc6.3/bin/./kpvslice /usr/local/bin/kpvslice
+#ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/karma/amd64_Linux_libc6.3/lib/ 
+#ENV KARMABASE="/usr/local/karma/amd64_Linux_libc6.3"
 
 
 # Imcal
 ADD imcal.py /opt/imcal.py
 ADD imcal.yml /opt/imcal_default.yml
-RUN ln -s /opt/apipeline/imcal.py /usr/local/bin/imcal.py
+RUN ln -s /opt/imcal.py /usr/local/bin/imcal.py
     
 #Clean 
 RUN rm -rf /software/*
