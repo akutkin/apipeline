@@ -35,7 +35,7 @@ RUN \
   git clone https://git.astron.nl/RD/EveryBeam.git && \
   mkdir /software/EveryBeam/build && \
   cd /software/EveryBeam/build && \
-  cmake ../ && \
+  cmake -DPORTABLE=True ../ && \
   make install -j`nproc --all`
 
 # Dysco
@@ -44,7 +44,7 @@ RUN \
   git clone https://github.com/aroffringa/dysco.git && \
   mkdir /software/dysco/build && \
   cd /software/dysco/build && \
-  cmake ../ && \
+  cmake -DPORTABLE=True ../ && \
   make install -j`nproc --all`
 
 # IDG
@@ -53,7 +53,7 @@ RUN \
   git clone https://git.astron.nl/RD/idg.git && \
   mkdir /software/idg/build && \
   cd /software/idg/build && \
-  cmake ../ && \
+  cmake -DPORTABLE=True ../ && \
   make install -j`nproc --all`
 
 # WSClean
@@ -62,7 +62,7 @@ RUN \
   git clone https://gitlab.com/aroffringa/wsclean.git && \
   mkdir /software/wsclean/build && \
   cd /software/wsclean/build && \
-  cmake ../ && \
+  cmake -DPORTABLE=True ../ && \
   make install -j`nproc --all` && \
   wsclean --version
 
@@ -72,7 +72,7 @@ RUN \
   git clone https://gitlab.com/aroffringa/aoflagger.git && \
   mkdir /software/aoflagger/build && \
   cd /software/aoflagger/build && \
-  cmake ../ && \
+  cmake -DPORTABLE=True ../ && \
   make install -j`nproc --all` && \
   aoflagger --version
 
@@ -81,7 +81,7 @@ RUN \
   cd /software && git clone https://git.astron.nl/RD/DP3.git && \
   mkdir /software/DP3/build && \
   cd /software/DP3/build && \
-  cmake ../ && \
+  cmake -DPORTABLE=True ../ && \
   make install -j`nproc --all` && \
   DP3 -v
 
@@ -114,7 +114,7 @@ RUN \
     cd modeltools && \
     mkdir build && \
     cd build && \
-    cmake ../ && \
+    cmake -DPORTABLE=True ../ && \
     make -j4 && \
     cp bbs2model cluster editmodel render /usr/local/bin/
     
