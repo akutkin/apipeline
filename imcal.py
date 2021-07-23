@@ -20,24 +20,11 @@ import glob
 import logging
 import yaml
 import argparse
-import distutils.spawn
 
 from astropy.coordinates import SkyCoord
 from astropy.time import Time
 import astropy.units as u
 from astropy.io import fits
-
-# the executables:
-dppp_bin = distutils.spawn.find_executable('DPPP')
-wsclean_bin = distutils.spawn.find_executable('wsclean')
-makesourcedb_bin = distutils.spawn.find_executable('makesourcedb')
-bbs2model_bin = distutils.spawn.find_executable('bbs2model')
-render_bin = distutils.spawn.find_executable('render')
-
-# Tom's masking code
-makeMaskFits = '/home/kutkin/rapthor/makeMaskFits'
-makeNoiseMapFits = '/home/kutkin/rapthor/makeNoiseMapFits'
-cfitsio_dir = '/home/kutkin/lib/cfitsio-3.49'
 
 
 _POOL_TIME = 300 # SECONDS
@@ -54,7 +41,7 @@ def modify_filename(fname, string, ext=None):
 
 
 def wsclean(msin, outname=None, pixelsize=3, imagesize=3072, mgain=0.8, multifreq=0, autothresh=0.3,
-            automask=3, niter=1000000, multiscale=False, save_source_list=False,
+            automask=3, niter=1000000, multiscale=False, save_source_list=True,
             clearfiles=True,
             fitsmask=None, kwstring=''):
     """
@@ -78,7 +65,7 @@ def wsclean(msin, outname=None, pixelsize=3, imagesize=3072, mgain=0.8, multifre
     if fitsmask:
         kwstring += f' -fits-mask {fitsmask}'
 
-    cmd = f'{wsclean_bin} -name {outname} -size {imagesize} {imagesize} -scale {pixelsize}asec -niter {niter} \
+    cmd = f'wsclean -name {outname} -size {imagesize} {imagesize} -scale {pixelsize}asec -niter {niter} \
             {kwstring} {msin}'
     cmd = " ".join(cmd.split())
     logging.debug("Running command: %s", cmd)
@@ -99,11 +86,16 @@ def create_mask(imgfits, residfits, clipval, outname='mask.fits'):
     """
     Create mask using Tom's code (e-mail on 1 Jul 2021)
     """
-    if not cfitsio_dir in os.environ['LD_LIBRARY_PATH']:
-        os.environ['LD_LIBRARY_PATH'] += f':{cfitsio_dir}'
+    # cfitsio_dir = '$HOME/lib/cfitsio-3.49'
+    # if not cfitsio_dir in os.environ['LD_LIBRARY_PATH']:
+    #     os.environ['LD_LIBRARY_PATH'] += f':{cfitsio_dir}'
 
-    subprocess.call(f'{makeNoiseMapFits} {imgfits} {residfits} noise.fits noiseMap.fits', shell=True)
-    subprocess.call(f'{makeMaskFits} noiseMap.fits {outname} {clipval}', shell=True)
+    cmd = f'makeNoiseMapFits {imgfits} {residfits} noise.fits noiseMap.fits'
+    logging.debug("Running command: %s", cmd)
+    subprocess.call(cmd, shell=True)
+    cmd = f'makeMaskFits noiseMap.fits {outname} {clipval}'
+    logging.debug("Running command: %s", cmd)
+    subprocess.call(cmd, shell=True)
     return outname
 
 
@@ -111,17 +103,15 @@ def get_image_max(msin):
     """
     Determine maximum image value for msin
     """
-    cmd = f'{wsclean_bin} -niter 0 -size 3072 3072 -scale 3arcsec -use-wgridder {msin}'
+    cmd = f'wsclean -niter 0 -size 3072 3072 -scale 3arcsec -use-wgridder {msin}'
     subprocess.call(cmd, shell=True)
     return np.nanmax(fits.getdata('wsclean-image.fits'))
 
 
 def makesourcedb(modelfile, out=None):
     """ Make sourcedb file from a clustered model """
-    # makesourcedb_bin = subprocess.check_output('which makesourcedb; exit 0', shell=True).strip() or makesourcedb_bin
-    # logging.debug('makesourcedb binary: {}'.format(makesourcedb_bin))
     out = out or os.path.splitext(modelfile)[0] + '.sourcedb'
-    cmd = '{} in={} out={}'.format(makesourcedb_bin, modelfile, out)
+    cmd = 'makesourcedb in={} out={}'.format(modelfile, out)
     logging.debug("Running command: %s", cmd)
     subprocess.call(cmd, shell=True)
     return out
@@ -129,25 +119,23 @@ def makesourcedb(modelfile, out=None):
 
 def bbs2model(inp, out=None):
     """ Convert model file to AO format """
-    # bbs2model_bin = subprocess.check_output('which bbs2model; exit 0', shell=True).strip() or bbs2model_bin
     out = out or os.path.splitext(inp)[0] + '.ao'
-    cmd = '{} {} {}'.format(bbs2model_bin, inp, out)
+    cmd = 'bbs2model {} {}'.format(inp, out)
     logging.debug("Running command: %s", cmd)
     subprocess.call(cmd, shell=True)
     return out
 
 
 def render(bkgr, model, out=None):
-    # render_bin = subprocess.check_output('which render; exit 0', shell=True).strip() or render_bin
     out = out or os.path.split(bkgr)[0] + '/restored.fits'
-    cmd = '{} -a -r -t {} -o {} {}'.format(render_bin, bkgr, out, model)
+    cmd = 'render -a -r -t {} -o {} {}'.format(bkgr, out, model)
     logging.debug("Running command: %s", cmd)
     subprocess.call(cmd, shell=True)
     return out
 
 
 def execute_dppp(args):
-    command = [f'{dppp_bin}'] + args
+    command = ['DPPP'] + args
     logging.debug('executing %s', ','.join(command))
     dppp_process = subprocess.Popen(command)
     for i in range(_MAX_POOL):
@@ -218,7 +206,7 @@ def ddecal(msin, srcdb, msout=None, h5out=None, solint=1, nfreq=15,
     h5out = h5out or os.path.split(msin)[0] + '/ddcal.h5'
     msbase = os.path.basename(msin).split('.')[0]
     msout = msout or '{}_{}_{}.MS'.format(msbase,mode, solint)
-    cmd = '{dppp_bin} msin={msin} msout={msout} \
+    cmd = 'DPPP msin={msin} msout={msout} \
           msin.startchan={startchan} \
           msin.nchan={nchan} \
           msout.overwrite=true \
@@ -233,7 +221,7 @@ def ddecal(msin, srcdb, msout=None, h5out=None, solint=1, nfreq=15,
           cal.nchan={nfreq} \
           cal.uvlambdamin={uvlambdamin} \
           steps=[cal] \
-          '.format(dppp_bin=dppp_bin, msin=msin, msout=msout, startchan=startchan, nchan=nchan, mode=mode,
+          '.format(msin=msin, msout=msout, startchan=startchan, nchan=nchan, mode=mode,
             srcdb=srcdb, solint=solint, h5out=h5out, subtract=subtract, nfreq=nfreq,
             uvlambdamin=uvlambdamin)
     cmd = " ".join(cmd.split())
@@ -374,6 +362,7 @@ def main(msin, outbase=None, cfgfile='imcal.yml'):
         threshold = img_max/cfg['clean0']['max_over_thresh']
         wsclean(ms_split, outname=img0, automask=None, save_source_list=False, multifreq=False, mgain=None,
             kwstring=f'-threshold {threshold}')
+    if not os.path.exists('mask0.fits')    :
         create_mask(img0 +'-image.fits', img0 +'-residual.fits', clipval=20, outname='mask0.fits')
 
 # clean1

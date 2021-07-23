@@ -3,12 +3,13 @@
 #:===========================================================================
 ####################### IMAGING #######################
 
-#global:
-#    dppp_bin: 'DPPP' # on blizzard
+#global: # provide executables here
+#    dppp_bin: 'DPPP' 
 #    wsclean_bin: 'wsclean'
 #    makesourcedb_bin: 'makesourcedb'
 #    bbs2model_bin: 'bbs2model'
 #    render_bin: 'render'
+    
 
 split1:
     startchan: 40 # start channel to split from
