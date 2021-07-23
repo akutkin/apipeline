@@ -86,10 +86,6 @@ def create_mask(imgfits, residfits, clipval, outname='mask.fits'):
     """
     Create mask using Tom's code (e-mail on 1 Jul 2021)
     """
-    # cfitsio_dir = '$HOME/lib/cfitsio-3.49'
-    # if not cfitsio_dir in os.environ['LD_LIBRARY_PATH']:
-    #     os.environ['LD_LIBRARY_PATH'] += f':{cfitsio_dir}'
-
     cmd = f'makeNoiseMapFits {imgfits} {residfits} noise.fits noiseMap.fits'
     logging.debug("Running command: %s", cmd)
     subprocess.call(cmd, shell=True)
