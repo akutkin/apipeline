@@ -26,6 +26,8 @@ from astropy.time import Time
 import astropy.units as u
 from astropy.io import fits
 
+from cluster import main as cluster
+
 
 _POOL_TIME = 300 # SECONDS
 _MAX_TIME = 1 * 3600 # SECONDS
@@ -325,6 +327,8 @@ def main(msin, outbase=None, cfgfile='imcal.yml'):
     img2 = outbase + '_2'
     img3 = outbase + '_3'
     img_final = outbase
+    img_ddsub = outbase + '-ddsub'
+    img_ddcal = outbase + '-ddcal'
 
     mask0 = 'mask0.fits'
     mask1 = 'mask1.fits'
@@ -337,13 +341,15 @@ def main(msin, outbase=None, cfgfile='imcal.yml'):
     dical1 = outbase + '_dical1.MS'
     dical2 = outbase + '_dical2.MS'
     dical3 = outbase + '_dical3.MS'
+    ddsub = outbase + '_ddsub.MS'
 
     h5_1 = outbase + '_dical1.h5'
     h5_2 = outbase + '_dical2.h5'
     h5_3 = outbase + '_dical3.h5'
+    h5_dd = outbase + '_dd.h5'
 
 
-    if os.path.exists(img_final+'-image.fits'):
+    if os.path.exists(img_ddcal+'-image.fits'):
         logging.info('The final image exists. Exiting...')
         return 0
 
@@ -397,6 +403,31 @@ def main(msin, outbase=None, cfgfile='imcal.yml'):
 # clean4
     if (not os.path.exists(img_final +'-image.fits')) and (not os.path.exists(img_final +'-MFS-image.fits')):
         wsclean(dical3, outname=img_final, **cfg['clean4'])
+
+
+# Cluster
+    if (not os.path.exists(img_final +'-clustered.txt')):
+        clustered_model = cluster(img_final+'-image.fits', img_final+'-residual.fits', img_final+'-sources.txt', **cfg['cluster'])
+
+# Makesourcedb
+        clustered_sdb = makesourcedb(clustered_model, img_final+'-clustered.sourcedb')
+
+# DDE calibration + peeling everything
+    if (not os.path.exists(ddsub)):
+        ddsub, h5out = ddecal(dical3, clustered_sdb, msout=ddsub, h5out=h5_dd,
+                            solint=120, mode='diagonal')
+
+# view the solutions and save figure
+        view_sols(h5_dd)
+
+    if (not os.path.exists(img_ddsub+'-image.fits')):
+        wsclean(ddsub, outname=img_ddsub, **cfg['clean4'])
+
+    aomodel = bbs2model(img_final+'-sources.txt', img_final+'-model.ao')
+
+    render(img_ddsub+'-image.fits', aomodel, out=img_ddcal+'-image.fits')
+
+
 
     return 0
 
