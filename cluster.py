@@ -456,7 +456,7 @@ def main(img, resid, model, auto=True, add_manual=False, nclusters=5, boxsize=25
          nbright=80, cluster_radius=5, cluster_overlap=1.6):
 
     path = os.path.split(os.path.abspath(img))[0]
-    output = os.path.spitext(img)[0]+'-clustered.txt'
+    output = os.path.splitext(img)[0]+'-clustered.txt'
 
     df = pd.read_csv(model, skipinitialspace=True)
     df['ra'] = df.Ra.apply(ra2deg)
