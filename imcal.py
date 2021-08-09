@@ -326,13 +326,13 @@ def main(msin, outbase=None, cfgfile='imcal.yml'):
     img1 = outbase + '_1'
     img2 = outbase + '_2'
     img3 = outbase + '_3'
-    img_final = outbase
+    img_final = outbase + '-dical'
     img_ddsub = outbase + '-ddsub'
     img_ddcal = outbase + '-ddcal'
 
-    mask0 = 'mask0.fits'
-    mask1 = 'mask1.fits'
-    mask2 = 'mask2.fits'
+    mask0 = outbase + '-mask0.fits'
+    mask1 = outbase + '-mask1.fits'
+    mask2 = outbase + '-mask2.fits'
 
     model1 = outbase + '_model1.sourcedb'
     model2 = outbase + '_model2.sourcedb'
@@ -364,45 +364,46 @@ def main(msin, outbase=None, cfgfile='imcal.yml'):
         threshold = img_max/cfg['clean0']['max_over_thresh']
         wsclean(ms_split, outname=img0, automask=None, save_source_list=False, multifreq=False, mgain=None,
             kwstring=f'-threshold {threshold}')
-    if not os.path.exists('mask0.fits')    :
-        create_mask(img0 +'-image.fits', img0 +'-residual.fits', clipval=20, outname='mask0.fits')
+        create_mask(img0 +'-image.fits', img0 +'-residual.fits', clipval=20, outname=mask0)
 
 # clean1
     if not os.path.exists(img1 +'-image.fits') and (not os.path.exists(img1 +'-MFS-image.fits')):
-        wsclean(ms_split, outname=img1, **cfg['clean1']) # fast shallow clean
+        wsclean(ms_split, fitsmask=mask0, outname=img1, **cfg['clean1']) # fast shallow clean
 
     if not os.path.exists(model1):
         makesourcedb(img1+'-sources.txt', out=model1)
-
+# dical1
     if not os.path.exists(dical1):
         dical1 = dical(ms_split, model1, msout=dical1, h5out=h5_1, **cfg['dical1'])
         view_sols(h5_1, outname='dical1')
 # clean2
     if (not os.path.exists(img2 +'-image.fits')) and (not os.path.exists(img2 +'-MFS-image.fits')):
-        wsclean(dical1, outname=img2, **cfg['clean2'])
-        create_mask(img2 +'-image.fits', img2 +'-residual.fits', clipval=7, outname='mask1.fits')
+        wsclean(dical1, fitsmask=mask0, outname=img2, **cfg['clean2'])
+        create_mask(img2 +'-image.fits', img2 +'-residual.fits', clipval=7, outname=mask1)
 
     if not os.path.exists(model2):
         makesourcedb(img2+'-sources.txt', out=model2)
 
+# dical2
     if not os.path.exists(dical2):
         dical2 = dical(dical1, model2, msout=dical2, h5out=h5_2, **cfg['dical2'])
         view_sols(h5_2, outname='dical2')
 # clean3
     if (not os.path.exists(img3 +'-image.fits')) and (not os.path.exists(img3 +'-MFS-image.fits')):
-        wsclean(dical2, outname=img3, **cfg['clean3'])
-        create_mask(img3 +'-image.fits', img3 +'-residual.fits', clipval=5, outname='mask2.fits')
+        wsclean(dical2, fitsmask=mask1, outname=img3, **cfg['clean3'])
+        create_mask(img3 +'-image.fits', img3 +'-residual.fits', clipval=5, outname=mask2)
 
     if not os.path.exists(model3):
         makesourcedb(img3+'-sources.txt', out=model3)
 
+# dical3
     if not os.path.exists(dical3):
         dical3 = dical(dical2, model3, msout=dical3, h5out=h5_3, **cfg['dical3'])
         view_sols(h5_3, outname='dical3')
 
 # clean4
     if (not os.path.exists(img_final +'-image.fits')) and (not os.path.exists(img_final +'-MFS-image.fits')):
-        wsclean(dical3, outname=img_final, **cfg['clean4'])
+        wsclean(dical3, fitsmask=mask2, outname=img_final, **cfg['clean4'])
 
 
 # Cluster

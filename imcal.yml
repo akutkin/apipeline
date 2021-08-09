@@ -24,7 +24,6 @@ clean1: # wsclean setup
     mgain: 0
     automask: 20
     autothresh: 5
-    fitsmask: 'mask0.fits'
     multiscale: False
     kwstring: '-use-wgridder -parallel-deconvolution 1400' # use this for additional wsclean options, e.g. '-weight uniform -use-idg' 
 
@@ -32,7 +31,7 @@ dical1: # DPPP setup for direction independent calibration
     solint: 20
     mode: 'phaseonly'
     uvlambdamin: 500 # Ignore baselines / channels with UV < uvlambdamin wavelengths.
-#    cal_nchan: 31 # number of chans with the same solutions
+    cal_nchan: 30 # number of chans with the same solutions
 
 clean2:
     imagesize: 3072
@@ -40,7 +39,6 @@ clean2:
     multifreq: 8  
     automask: 10
     autothresh: 5
-    fitsmask: 'mask0.fits'
     multiscale: True
     kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3'
     
@@ -48,7 +46,7 @@ dical2:
     solint: 1
     mode: 'phaseonly'
     uvlambdamin: 500 # Ignore baselines / channels with UV < uvlambdamin wavelengths.
-    cal_nchan: 31 # number of chans with the same solutions
+    cal_nchan: 30 # number of chans with the same solutions
 
 clean3:
     imagesize: 3072
@@ -56,7 +54,6 @@ clean3:
     multifreq: 8  
     automask: 7
     autothresh: 3.5
-    fitsmask: 'mask1.fits'
     multiscale: True
     kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3'
     
@@ -64,7 +61,7 @@ dical3:
     solint: 800
     mode: 'diagonal'
     uvlambdamin: 500 # Ignore baselines / channels with UV < uvlambdamin wavelengths.
-    cal_nchan: 31 # number of chans with the same solutions
+    cal_nchan: 30 # number of chans with the same solutions.
     
 clean4:
     imagesize: 3072
@@ -73,7 +70,6 @@ clean4:
     automask: 4.5
     autothresh: 0.5
     multiscale: True
-    fitsmask: 'mask2.fits'
     kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3 -weight briggs 0.0'
 
 ####################### CLUSTERING #######################
@@ -88,9 +84,9 @@ cluster:
 
 ######################## DD CALIBRATION #######################
 ddcal: # see DPPP/DDECal documentation
-    solint: 120 # Solution interval in timesteps (1 ~ 30sec for Apertif).
+    solint: 120 # Solution interval in timesteps (1 corresponds to 30 seconds for Apertif).
     mode: 'diagonal' # Type of constraint to apply. 
-    nfreq: 15 # Number of channels in each channel block, for which the solution is assumed to be constant.
+    nfreq: 30 # Number of channels in each channel block, for which the solution is assumed to be constant.
     startchan: 0
     nchan: 0
     uvlambdamin: 500 # Ignore baselines / channels with UV < uvlambdamin wavelengths.

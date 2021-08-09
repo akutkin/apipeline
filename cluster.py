@@ -378,12 +378,6 @@ def auto_clustering(fig, ax, df, wcs, resid_data, pix_arcmin_scale, nbright,
 
         small_resid = resid_data[py-boxsize:py+boxsize, px-boxsize:px+boxsize]
         ellipse_mean, ecc, amaj, numpix = ellipses_coh(small_resid, amin=20, amax=boxsize-1, dr=1.0)
-        # print ellipse_mean, ecc, amaj, numpix
-
-
-
-        # if abs(ring_mean/resid_mean) > 1.7e5:
-        # if abs(ring_mean/small_resid_mean) > 1e4:
 
         if nclusters=='auto':
             if abs(ellipse_mean/rms) > 1.4:
@@ -451,12 +445,20 @@ def auto_clustering(fig, ax, df, wcs, resid_data, pix_arcmin_scale, nbright,
 
         return final_clusters
 
+# TODO
+def voronoy_clustering():
+    """
+    Use Voronoy clustering instead of fixed radius around sources
+    """
+    pass
+
+
 
 def main(img, resid, model, auto=True, add_manual=False, nclusters=5, boxsize=250,
          nbright=80, cluster_radius=5, cluster_overlap=1.6):
 
-    path = os.path.split(os.path.abspath(img))[0]
-    output = os.path.splitext(img)[0]+'-clustered.txt'
+    imgbase = os.path.splitext(img)[0]
+    output = imgbase + '-clustered.txt'
 
     df = pd.read_csv(model, skipinitialspace=True)
     df['ra'] = df.Ra.apply(ra2deg)
@@ -491,7 +493,7 @@ def main(img, resid, model, auto=True, add_manual=False, nclusters=5, boxsize=25
     if clusters:
         write_df(df, clusters, output=output)
     fig.tight_layout()
-    fig.savefig(path+'/clustering.png')
+    fig.savefig(imgbase+'-clustering.png')
     return output
 
 
