@@ -25,7 +25,7 @@ clean1: # wsclean setup
     automask: 20
     autothresh: 5
     multiscale: False
-    clip_model_level: None # use a float number to clip the model to above this level
+    clip_model_level: null # use a float number to clip the model to above this level. null is None.
     kwstring: '-use-wgridder -parallel-deconvolution 1400' # use this for additional wsclean options, e.g. '-weight uniform -use-idg' 
 
 dical1: # DPPP setup for direction independent calibration
@@ -41,7 +41,7 @@ clean2:
     automask: 10
     autothresh: 5
     multiscale: True
-    clip_model_level: None
+    clip_model_level: null
     kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3'
     
 dical2:
@@ -57,7 +57,7 @@ clean3:
     automask: 7
     autothresh: 3.5
     multiscale: True
-    clip_model_level: None
+    clip_model_level: null
     kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3'
     
 dical3:
@@ -73,7 +73,7 @@ clean4:
     automask: 4.5
     autothresh: 0.5
     multiscale: True
-    clip_model_level: None
+    clip_model_level: null
     kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3 -weight briggs 0.0'
 
 ####################### CLUSTERING #######################
@@ -104,7 +104,7 @@ clean5:
     autothresh: 0.5
     multiscale: True
     fitsmask: 'mask2.fits'
-    clip_model_level: None
+    clip_model_level: null
     kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3 -weight briggs 0.0'    
     
 ### END
