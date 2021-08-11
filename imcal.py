@@ -44,7 +44,7 @@ def modify_filename(fname, string, ext=None):
 
 def wsclean(msin, outname=None, pixelsize=3, imagesize=3072, mgain=0.8, multifreq=0, autothresh=0.3,
             automask=3, niter=1000000, multiscale=False, save_source_list=True,
-            clearfiles=True,
+            clearfiles=True, clip_model_level=None,
             fitsmask=None, kwstring=''):
     """
     wsclean
@@ -80,6 +80,8 @@ def wsclean(msin, outname=None, pixelsize=3, imagesize=3072, mgain=0.8, multifre
         todelete = glob.glob(f'{outname}-000[0-9]-*.fits') # multifreq images
         for f in todelete:
             os.remove(f)
+
+    remove_model_components_below_level(f'{outname}-sources.txt', clip_model_level)
 
     return 0
 
@@ -302,7 +304,7 @@ def remove_model_components_below_level(model, level=0.0, out=None):
     if level is None:
         return model
     out = out or model
-    logging.warning('Overwriting the model')
+    logging.warning('Clipping the model %s to level %f', model, level)
     df = pd.read_csv(model, skipinitialspace=True)
     new = df.query('I>@level')
     new.to_csv(out, index=False)
