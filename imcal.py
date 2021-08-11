@@ -198,7 +198,7 @@ def dical(msin, srcdb, msout=None, h5out=None, solint=1, startchan=0, split_ncha
     return msout
 
 
-def ddecal(msin, srcdb, msout=None, h5out=None, solint=1, nfreq=15,
+def ddecal(msin, srcdb, msout=None, h5out=None, solint=120, nfreq=30,
            startchan=0, nchan=0, mode='diagonal', uvlambdamin=500, subtract=True):
     """ Perform direction dependent calibration with DPPP """
     h5out = h5out or os.path.split(msin)[0] + '/ddcal.h5'
@@ -416,8 +416,7 @@ def main(msin, outbase=None, cfgfile='imcal.yml'):
 
 # DDE calibration + peeling everything
     if (not os.path.exists(ddsub)):
-        ddsub, h5out = ddecal(dical3, clustered_sdb, msout=ddsub, h5out=h5_dd,
-                            solint=120, mode='diagonal')
+        ddsub, h5out = ddecal(dical3, clustered_sdb, msout=ddsub, h5out=h5_dd, **cfg['ddcal'])
 
 # view the solutions and save figure
         view_sols(h5_dd)
