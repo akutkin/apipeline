@@ -282,15 +282,15 @@ def view_sols(h5param, outname=None):
     # plt.show()
 
 # TODO
-def model_apply_threshold(model, threshold=0.0, out=None):
+def remove_model_components_below_level(model, level=0.0, out=None):
     """
-    Clip the model to be above the given threshold
+    Clip the model to be above the given level
 
     Parameters
     ----------
     model : STR, model file name
         the input model file name
-    threshold : FLOAT, optional
+    level : FLOAT, optional
         the threshold above which the components are kept. The default is 0.0.
     out : STR, optional
         The output model filename. The default is None (the model file will be overwritten).
@@ -299,10 +299,12 @@ def model_apply_threshold(model, threshold=0.0, out=None):
     -------
     None.
     """
+    if level is None:
+        return model
     out = out or model
     logging.warning('Overwriting the model')
     df = pd.read_csv(model, skipinitialspace=True)
-    new = df.query('I>@threshold')
+    new = df.query('I>@level')
     new.to_csv(out, index=False)
     return out
 
