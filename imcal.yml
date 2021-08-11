@@ -76,10 +76,11 @@ clean4:
 cluster:
     nbright: 80 # number of brightest clean components (CC) to check for artefacts
     boxsize: 250 # the boxsize around CC in pixels where to check for artefacts
-    nclusters: 10 # number of clusters ('auto' -- to set automatically)
+    nclusters: 6 # number of clusters ('auto' -- to set automatically)
+    clustering_method: 'Voronoi'
+# the following is only for 'auto' and 'manual' mathods:    
     cluster_radius: 5 # arcmin
-    cluster_overlap: 1.6 # if lower than 2 clusters can intersect
-    auto: True
+    cluster_overlap: 2 # if lower than 2 clusters can intersect 
     add_manual: False
 
 ######################## DD CALIBRATION #######################

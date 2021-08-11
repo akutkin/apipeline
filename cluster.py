@@ -16,18 +16,24 @@ from astropy.coordinates import SkyCoord, angles
 from astropy.stats import median_absolute_deviation as mad
 import astropy.units as u
 import numpy as np
+import logging
+
+import matplotlib
+matplotlib._log.disabled = True
+logging.getLogger("matplotlib").setLevel(logging.WARNING)
+
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.patches import Circle, Rectangle, Ellipse
 
-# import copy
+# from sklearn.cluster import KMeans
+from scipy.spatial import Voronoi, cKDTree
 
-import logging
 logging.basicConfig(level=logging.DEBUG)
 
 def ra2deg(ra):
     s = np.array(ra.split(':'), dtype=float)
-    if s[0] < 0.0:
+    if ra.startswith('-'):
         sign = -1.0
     else:
         sign = 1.0
@@ -367,7 +373,7 @@ def auto_clustering(fig, ax, df, wcs, resid_data, pix_arcmin_scale, nbright,
         src_index += 1
 
 # skip the edge sources
-        if (abs(px-resid_data.shape[1]) < boxsize)or (abs(py-resid_data.shape[0]) < boxsize):
+        if (abs(px-resid_data.shape[1]) < boxsize) or (abs(py-resid_data.shape[0]) < boxsize):
             logging.debug('Skipping the edge source')
             continue
 
@@ -445,17 +451,220 @@ def auto_clustering(fig, ax, df, wcs, resid_data, pix_arcmin_scale, nbright,
 
         return final_clusters
 
-# TODO
-def voronoy_clustering():
+
+def voronoi_plot_2d_world(vor, ax=None, **kw):
     """
-    Use Voronoy clustering instead of fixed radius around sources
+    Plot the given Voronoi diagram in 2-D on "world" ax transform
+
+    Parameters
+    ----------
+    vor : scipy.spatial.Voronoi instance
+        Diagram to plot
+    ax : matplotlib.axes.Axes instance, optional
+        Axes to plot on
+    show_points: bool, optional
+        Add the Voronoi points to the plot.
+    show_vertices : bool, optional
+        Add the Voronoi vertices to the plot.
+    line_colors : string, optional
+        Specifies the line color for polygon boundaries
+    line_width : float, optional
+        Specifies the line width for polygon boundaries
+    line_alpha: float, optional
+        Specifies the line alpha for polygon boundaries
+    point_size: float, optional
+        Specifies the size of points
+
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure instance
+        Figure for the plot
+
+    See Also
+    --------
+    Voronoi
+
+    Notes
+    -----
+    Requires Matplotlib.
+
+    Examples
+    --------
+    Set of point:
+
+    >>> import matplotlib.pyplot as plt
+    >>> points = np.random.rand(10,2) #random
+
+    Voronoi diagram of the points:
+
+    >>> from scipy.spatial import Voronoi, voronoi_plot_2d
+    >>> vor = Voronoi(points)
+
+    using `voronoi_plot_2d` for visualisation:
+
+    >>> fig = voronoi_plot_2d(vor)
+
+    using `voronoi_plot_2d` for visualisation with enhancements:
+
+    >>> fig = voronoi_plot_2d(vor, show_vertices=False, line_colors='orange',
+    ...                 line_width=2, line_alpha=0.6, point_size=2)
+    >>> plt.show()
+
     """
-    pass
+    from matplotlib.collections import LineCollection
+
+    if ax:
+        xlim = ax.get_xlim()
+        ylim = ax.get_ylim()
+
+    if vor.points.shape[1] != 2:
+        raise ValueError("Voronoi diagram is not 2-D")
+
+    if kw.get('show_points', True):
+        point_size = kw.get('point_size', None)
+        ax.plot(vor.points[:,0], vor.points[:,1], '+', markersize=point_size, transform=ax.get_transform("world"))
+    if kw.get('show_vertices', True):
+        ax.plot(vor.vertices[:,0], vor.vertices[:,1], '.', transform=ax.get_transform("world"))
+
+    line_colors = kw.get('line_colors', 'k')
+    line_width = kw.get('line_width', 1.0)
+    line_alpha = kw.get('line_alpha', 1.0)
+
+    center = vor.points.mean(axis=0)
+    ptp_bound = vor.points.ptp(axis=0)
+
+    finite_segments = []
+    infinite_segments = []
+    for pointidx, simplex in zip(vor.ridge_points, vor.ridge_vertices):
+        simplex = np.asarray(simplex)
+        if np.all(simplex >= 0):
+            finite_segments.append(vor.vertices[simplex])
+        else:
+            i = simplex[simplex >= 0][0]  # finite end Voronoi vertex
+
+            t = vor.points[pointidx[1]] - vor.points[pointidx[0]]  # tangent
+            t /= np.linalg.norm(t)
+            n = np.array([-t[1], t[0]])  # normal
+
+            midpoint = vor.points[pointidx].mean(axis=0)
+            direction = np.sign(np.dot(midpoint - center, n)) * n
+            if (vor.furthest_site):
+                direction = -direction
+            far_point = vor.vertices[i] + direction * ptp_bound.max()
+
+            infinite_segments.append([vor.vertices[i], far_point])
+
+    ax.add_collection(LineCollection(finite_segments,
+                                     colors=line_colors,
+                                     lw=line_width,
+                                     alpha=line_alpha,
+                                     linestyle='solid',
+                                     transform=ax.get_transform("world")))
+    ax.add_collection(LineCollection(infinite_segments,
+                                     colors=line_colors,
+                                     lw=line_width,
+                                     alpha=line_alpha,
+                                     linestyle='dashed',
+                                     transform=ax.get_transform("world")))
+
+    if ax:
+        ax.set_xlim(xlim)
+        ax.set_ylim(ylim)
+    return ax.figure
 
 
+def write_df_voronoi(df, vor, output=None):
+    output = output or 'model_clustered.txt'
+    with open(output, 'w') as out:
+        out.write("Format = Name,Patch,Type,Ra,Dec,I,Q,U,V,SpectralIndex,LogarithmicSI,ReferenceFrequency='1399603271.48438',MajorAxis,MinorAxis,Orientation\n")
+    nn_tree = cKDTree(vor.points)
+    dists, regs = nn_tree.query(np.array([df.ra, df.dec]).T)
+    df['nn'] = regs
+    df['dist'] = dists
+    for i, p in enumerate(vor.points):
+        clust_df = df.query('nn == @i').copy()
+        clust_df.loc[clust_df.index,'Patch'] = 'cluster{}'.format(i+1)
+        with open(output, 'a') as out:
+            out.write(', cluster{}, POINT, , , , , , , , , , , ,\n'.format(i+1))
+            clust_df.to_csv(out, index=False, header=False, columns=df.columns[:-4])
+    return output
 
-def main(img, resid, model, auto=True, add_manual=False, nclusters=5, boxsize=250,
+
+def voronoi_clustering(fig, ax, df, wcs, resid_data, nbright, nclusters,
+                      boxsize=250, same_source_radius=5, central_region=True):
+    """
+    Use Voronoi clustering instead of fixed radius around sources
+    """
+
+    # logging.info('Checking {} brightest model components'.format(nbright))
+
+    bright_df = df.sort_values('I')[::-1][:nbright][['ra', 'dec', 'I']]
+    # csnrs = []
+    # cfluxes = []
+    # cmeasures = [] # the main value to clusterize by
+    # cellipse_params = []
+
+    # fmin, fmax = min(a.I), max(a.I)
+    rms = mad(resid_data)
+    # resid_mean = np.mean(resid_data)
+
+    logging.info('Getting measures for the potential clusters...')
+    clusters = []
+    clusters_centers = [] #
+
+
+    for ra, dec, flux in bright_df.values:
+        c = SkyCoord(ra, dec, unit='deg')
+        px, py = np.round(wcs.all_world2pix(c.ra, c.dec, 0)).astype(int)
+# skip the edge sources
+        if (abs(px-resid_data.shape[1]) < boxsize) or (abs(py-resid_data.shape[0]) < boxsize):
+            # logging.debug('Skipping the edge source')
+            continue
+# Check if the component already in a cluster
+        if clusters and any([c.separation(_).arcmin<same_source_radius for _ in clusters]):
+            continue
+
+        small_resid = resid_data[py-boxsize:py+boxsize, px-boxsize:px+boxsize]
+        ellipse_mean, ecc, amaj, numpix = ellipses_coh(small_resid, amin=20, amax=boxsize-1, dr=1.0)
+
+        if abs(ellipse_mean/rms) > 1.4:
+             # rect = plt.Rectangle((px-boxsize, py-boxsize), 2*boxsize, 2*boxsize,
+             #                      lw=1, color='k', fc='none', alpha=0.3)
+             # ax.add_artist(rect)
+             clusters_centers.append([ra, dec])
+             clusters.append(c)
+             print(ra, dec)
+
+        if (isinstance(nclusters, int)) and (len(clusters_centers) >= nclusters):
+            logging.debug('Max cluster number reached. Breaking...')
+            break
+
+    if isinstance(nclusters, int) and len(clusters_centers) < nclusters:
+        logging.warning('Decreasing number of clusters')
+        nclusters = len(clusters_centers)
+
+    # X = np.vstack([df.ra, df.dec]).T
+    # kmeans = KMeans(n_clusters=nclusters, init=clusters_centers, n_init=1, random_state=0, max_iter=1)
+    # kmeans.fit(X)
+    # y_kmeans = kmeans.predict(X) # cluster index for each observation
+    # ax.scatter(clusters_centers[:, 0], clusters_centers[:, 1], c='black', s=100, alpha=0.5, transform=ax.get_transform("world"))
+
+    vor = Voronoi(np.array(clusters_centers))
+    voronoi_plot_2d_world(vor, ax=ax, show_vertices=False)
+
+    return vor
+
+
+def main(img, resid, model, clustering_method='Voronoi', add_manual=False, nclusters=10, boxsize=250,
          nbright=80, cluster_radius=5, cluster_overlap=1.6):
+    """
+    clustering
+    methods:
+        Voronoi
+        auto
+        manual
+    """
 
     imgbase = os.path.splitext(img)[0]
     output = imgbase + '-clustered.txt'
@@ -476,22 +685,28 @@ def main(img, resid, model, auto=True, add_manual=False, nclusters=5, boxsize=25
         pix_arcmin_scale = f[0].header['CDELT2']*60
         # racen = f[0].header['CRVAL1']
         # deccen = f[0].header['CRVAL2']
-    cluster_radius = angles.Angle(cluster_radius, unit='arcmin')
     fig = plt.figure(figsize=[12,12])
     ax = fig.add_subplot(1,1,1, projection=wcs.celestial)
     vmin, vmax = np.percentile(image_data, 5), np.percentile(image_data, 95)
     ax.imshow(resid_data, vmin=vmin, vmax=vmax, origin='lower')#cmap='gray', vmin=2e-5, vmax=0.1)#, norm=LogNorm())
-    if auto:
+
+    if clustering_method.lower() == 'voronoi':
+
+        vor = voronoi_clustering(fig, ax, df, wcs, resid_data, nbright, nclusters=nclusters)
+        write_df_voronoi(df, vor, output=output)
+
+    elif clustering_method.lower() == 'auto':
+        cluster_radius = angles.Angle(cluster_radius, unit='arcmin')
         clusters = auto_clustering(fig, ax, df, wcs, resid_data, pix_arcmin_scale, nbright, cluster_radius,
                                   cluster_overlap, boxsize=boxsize, nclusters=nclusters)
         if add_manual:
             clusters_man = manual_clustering(fig, ax, wcs, pix_arcmin_scale, startnum=len(clusters)+1)
             clusters = clusters + clusters_man
-    else:
-        clusters = manual_clustering(fig, ax, wcs, pix_arcmin_scale)
-
-    if clusters:
         write_df(df, clusters, output=output)
+    elif clustering_method.lower() == 'manual':
+        clusters = manual_clustering(fig, ax, wcs, pix_arcmin_scale)
+        write_df(df, clusters, output=output)
+
     fig.tight_layout()
     fig.savefig(imgbase+'-clustering.png')
     return output
@@ -500,15 +715,7 @@ def main(img, resid, model, auto=True, add_manual=False, nclusters=5, boxsize=25
 ### if __name__ == "__main__":
 if __name__ == "__main__":
 
-    # base = '/home/kutkin/apertif/clustering/191209026/01/dical2-'
-    # base = '/home/kutkin/apertif/clustering/191209026/15/dical2-'
-    # base = '/home/kutkin/apertif/clustering/191010042/00/dical2-'
-    # base = '/home/kutkin/apertif/clustering/191006041_21/dical2-'
-    # base = '/home/kutkin/apertif/clustering/191010042_25/dical-'
-    # base = '/home/kutkin/apertif/clustering/191209026/10/dical2-'
-    base = '/home/kutkin/apertif/clustering/191010041/23/dical2-'
-    # base = '/home/kutkin/apertif/clustering/190915041/25/dical2-'
-
+    base = '/kutkin/apipeline/to_validate/210109001_06-dical-'
     img = base + 'image.fits'
     resid = base + 'residual.fits'
     model = base + 'sources.txt'
@@ -516,5 +723,5 @@ if __name__ == "__main__":
     # resid = sys.argv[2]
     # model = sys.argv[3]
 
-    main(img, resid, model, auto=True, nclusters='auto')
+    main(img, resid, model, clustering_method='Voronoi', nclusters=6)
 

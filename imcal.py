@@ -199,7 +199,7 @@ def dical(msin, srcdb, msout=None, h5out=None, solint=1, startchan=0, split_ncha
 
 
 def ddecal(msin, srcdb, msout=None, h5out=None, solint=1, nfreq=15,
-           startchan=0, nchan=192, mode='diagonal', uvlambdamin=500, subtract=True):
+           startchan=0, nchan=0, mode='diagonal', uvlambdamin=500, subtract=True):
     """ Perform direction dependent calibration with DPPP """
     h5out = h5out or os.path.split(msin)[0] + '/ddcal.h5'
     msbase = os.path.basename(msin).split('.')[0]
