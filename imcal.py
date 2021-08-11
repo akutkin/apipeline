@@ -80,8 +80,8 @@ def wsclean(msin, outname=None, pixelsize=3, imagesize=3072, mgain=0.8, multifre
         todelete = glob.glob(f'{outname}-000[0-9]-*.fits') # multifreq images
         for f in todelete:
             os.remove(f)
-
-    remove_model_components_below_level(f'{outname}-sources.txt', clip_model_level)
+    if save_source_list:
+        remove_model_components_below_level(f'{outname}-sources.txt', clip_model_level)
 
     return 0
 
