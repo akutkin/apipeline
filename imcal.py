@@ -308,6 +308,7 @@ def model_apply_threshold(model, threshold=0.0, out=None):
 
 
 def main(msin, outbase=None, cfgfile='imcal.yml'):
+    msin = msin.rstrip('/')
     logging.info('Processing {}'.format(msin))
     logging.info('The config file: {}'.format(cfgfile))
     with open(cfgfile) as f:
