@@ -148,8 +148,8 @@ ADD imcal.py /opt/imcal.py
 ADD imcal.yml /opt/imcal.yml
 RUN ln -s /opt/imcal.py /usr/local/bin/imcal.py
     
-#Clean 
-RUN rm -rf /software/*
+# Clean 
+#RUN rm -rf /software/*
 
 
 

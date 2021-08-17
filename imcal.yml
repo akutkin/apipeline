@@ -11,12 +11,15 @@
 ####################### IMAGING #######################
 
 split1:
-    startchan: 40 # start channel to split from
+    startchan: 0 # start channel to split from
     nchan: 0 # 0 means till the end
 
+# TODO: skip
 clean0: # initial clean
     max_over_thresh: 250 # the threshold for initial CLEAN is set to image_max/max_over_thresh
-    
+# TODO add fixed threshold of 100 uJy    
+
+
 clean1: # wsclean setup
     imagesize: 3072
     pixelsize: 3 
@@ -32,12 +35,13 @@ dical1: # DPPP setup for direction independent calibration
     solint: 20
     mode: 'phaseonly'
     uvlambdamin: 500 # Ignore baselines / channels with UV < uvlambdamin wavelengths.
-    cal_nchan: 30 # number of chans with the same solutions
+    cal_nchan: 72 # number of chans with the same solutions
 
 clean2:
     imagesize: 3072
-    pixelsize: 3 
-    multifreq: 8  
+    pixelsize: 3
+    mgain: 0
+    multifreq: 6  
     automask: 10
     autothresh: 5
     multiscale: True
@@ -48,12 +52,12 @@ dical2:
     solint: 1
     mode: 'phaseonly'
     uvlambdamin: 500 # Ignore baselines / channels with UV < uvlambdamin wavelengths.
-    cal_nchan: 30 # number of chans with the same solutions
+    cal_nchan: 72 # number of chans with the same solutions
 
 clean3:
     imagesize: 3072
     pixelsize: 3 
-    multifreq: 8  
+    multifreq: 6  
     automask: 7
     autothresh: 3.5
     multiscale: True
@@ -61,27 +65,27 @@ clean3:
     kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3'
     
 dical3:
-    solint: 800
+    solint: 240
     mode: 'diagonal'
     uvlambdamin: 500 # Ignore baselines / channels with UV < uvlambdamin wavelengths.
-    cal_nchan: 30 # number of chans with the same solutions.
+    cal_nchan: 72 # number of chans with the same solutions.
     
 clean4:
     imagesize: 3072
     pixelsize: 3
-    multifreq: 8
-    automask: 4.5
-    autothresh: 0.5
+    multifreq: 6
+    automask: 5.0
+    autothresh: 1.0
     multiscale: True
     clip_model_level: null
-    kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3 -weight briggs 0.0'
+    kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3 -weight briggs -1.5'
 
 ####################### CLUSTERING #######################
 cluster:
     nbright: 80 # number of brightest clean components (CC) to check for artefacts
     boxsize: 250 # the boxsize around CC in pixels where to check for artefacts
     nclusters: 6 # number of clusters ('auto' -- to set automatically)
-    clustering_method: 'Voronoi'
+    clustering_method: 'Voronoi' 
 # the following is only for 'auto' and 'manual' mathods:    
     cluster_radius: 5 # arcmin
     cluster_overlap: 2 # if lower than 2 clusters can intersect 
@@ -89,10 +93,11 @@ cluster:
 
 ######################## DD CALIBRATION #######################
 ddcal: # see DPPP/DDECal documentation
-    solint: 120 # Solution interval in timesteps (1 corresponds to 30 seconds for Apertif).
+    solint: 60 # Solution interval in timesteps (1 corresponds to 30 seconds for Apertif).
     mode: 'diagonal' # Type of constraint to apply. 
-    nfreq: 30 # Number of channels in each channel block, for which the solution is assumed to be constant.
+    nfreq: 72 # Number of channels in each channel block, for which the solution is assumed to be constant.
     startchan: 0
+    minvisratio: 0.6
     nchan: 0
     uvlambdamin: 500 # Ignore baselines / channels with UV < uvlambdamin wavelengths.
 
@@ -100,12 +105,12 @@ clean5:
     imagesize: 3072
     pixelsize: 3
     multifreq: 8
-    automask: 4.5
-    autothresh: 0.5
+    automask: 5.0
+    autothresh: 1.0
     multiscale: True
     fitsmask: 'mask2.fits'
     clip_model_level: null
-    kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3 -weight briggs 0.0'    
+    kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3 -weight briggs -1.5'    
     
 ### END
 

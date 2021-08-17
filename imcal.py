@@ -199,9 +199,9 @@ def dical(msin, srcdb, msout=None, h5out=None, solint=1, startchan=0, split_ncha
     check_return_code(return_code)
     return msout
 
-
+# TODO add minvisratio to te config
 def ddecal(msin, srcdb, msout=None, h5out=None, solint=120, nfreq=30,
-           startchan=0, nchan=0, mode='diagonal', uvlambdamin=500, subtract=True):
+           startchan=0, nchan=0, minvisratio=0.6, mode='diagonal', uvlambdamin=500, subtract=True):
     """ Perform direction dependent calibration with DPPP """
     h5out = h5out or os.path.split(msin)[0] + '/ddcal.h5'
     msbase = os.path.basename(msin).split('.')[0]
@@ -218,12 +218,13 @@ def ddecal(msin, srcdb, msout=None, h5out=None, solint=120, nfreq=30,
           cal.subtract={subtract} \
           cal.propagatesolutions=true \
           cal.propagateconvergedonly=true \
+          cal.minvisratio={minvisratio} \
           cal.nchan={nfreq} \
           cal.uvlambdamin={uvlambdamin} \
           steps=[cal] \
           '.format(msin=msin, msout=msout, startchan=startchan, nchan=nchan, mode=mode,
             srcdb=srcdb, solint=solint, h5out=h5out, subtract=subtract, nfreq=nfreq,
-            uvlambdamin=uvlambdamin)
+            minvisratio=minvisratio, uvlambdamin=uvlambdamin)
     cmd = " ".join(cmd.split())
     logging.debug("Running command: %s", cmd)
     subprocess.call(cmd, shell=True)
@@ -358,11 +359,11 @@ def main(msin, outbase=None, cfgfile='imcal.yml'):
         logging.info('The final image exists. Exiting...')
         return 0
 
+# TODO check if splitting is needed
     if not os.path.exists(ms_split):
         ms_split = split_ms(msin, msout_path=ms_split, **cfg['split1'])
 
 # Clean + DIcal
-
 
     if not os.path.exists(img0 +'-image.fits') and (not os.path.exists(img0 +'-MFS-image.fits')):
         img_max = get_image_max(ms_split)
@@ -380,7 +381,7 @@ def main(msin, outbase=None, cfgfile='imcal.yml'):
 # dical1
     if not os.path.exists(dical1):
         dical1 = dical(ms_split, model1, msout=dical1, h5out=h5_1, **cfg['dical1'])
-        view_sols(h5_1, outname='dical1')
+        view_sols(h5_1, outname=msbase+'_sols_dical1')
 # clean2
     if (not os.path.exists(img2 +'-image.fits')) and (not os.path.exists(img2 +'-MFS-image.fits')):
         wsclean(dical1, fitsmask=mask0, outname=img2, **cfg['clean2'])
@@ -392,7 +393,7 @@ def main(msin, outbase=None, cfgfile='imcal.yml'):
 # dical2
     if not os.path.exists(dical2):
         dical2 = dical(dical1, model2, msout=dical2, h5out=h5_2, **cfg['dical2'])
-        view_sols(h5_2, outname='dical2')
+        view_sols(h5_2, outname=msbase+'_sols_dical2')
 # clean3
     if (not os.path.exists(img3 +'-image.fits')) and (not os.path.exists(img3 +'-MFS-image.fits')):
         wsclean(dical2, fitsmask=mask1, outname=img3, **cfg['clean3'])
@@ -404,7 +405,7 @@ def main(msin, outbase=None, cfgfile='imcal.yml'):
 # dical3
     if not os.path.exists(dical3):
         dical3 = dical(dical2, model3, msout=dical3, h5out=h5_3, **cfg['dical3'])
-        view_sols(h5_3, outname='dical3')
+        view_sols(h5_3, outname=msbase+'_sols_dical3')
 
 # clean4
     if (not os.path.exists(img_final +'-image.fits')) and (not os.path.exists(img_final +'-MFS-image.fits')):
@@ -423,7 +424,7 @@ def main(msin, outbase=None, cfgfile='imcal.yml'):
         ddsub, h5out = ddecal(dical3, clustered_sdb, msout=ddsub, h5out=h5_dd, **cfg['ddcal'])
 
 # view the solutions and save figure
-        view_sols(h5_dd)
+        view_sols(h5_dd, outname=msbase+'_sols_ddcal')
 
     if (not os.path.exists(img_ddsub+'-image.fits')):
         wsclean(ddsub, outname=img_ddsub, **cfg['clean4'])
