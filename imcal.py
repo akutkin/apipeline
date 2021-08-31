@@ -199,7 +199,6 @@ def dical(msin, srcdb, msout=None, h5out=None, solint=1, startchan=0, split_ncha
     check_return_code(return_code)
     return msout
 
-# TODO add minvisratio to te config
 def ddecal(msin, srcdb, msout=None, h5out=None, solint=120, nfreq=30,
            startchan=0, nchan=0, minvisratio=0.6, mode='diagonal', uvlambdamin=500, subtract=True):
     """ Perform direction dependent calibration with DPPP """
@@ -284,7 +283,6 @@ def view_sols(h5param, outname=None):
 
     # plt.show()
 
-# TODO
 def remove_model_components_below_level(model, level=0.0, out=None):
     """
     Clip the model to be above the given level
@@ -359,8 +357,7 @@ def main(msin, outbase=None, cfgfile='imcal.yml'):
         logging.info('The final image exists. Exiting...')
         return 0
 
-# TODO check if splitting is needed
-    if not os.path.exists(ms_split):
+    if (not os.path.exists(ms_split)) and (cfg['split1']['startchan'] or cfg['split1']['nchan']):
         ms_split = split_ms(msin, msout_path=ms_split, **cfg['split1'])
 
 # Clean + DIcal

@@ -145,6 +145,7 @@ RUN cd /software/makemask && \
 
 # Imcal
 ADD imcal.py /opt/imcal.py
+ADD cluster.py /opt/cluster.py
 ADD imcal.yml /opt/imcal.yml
 RUN ln -s /opt/imcal.py /usr/local/bin/imcal.py
     

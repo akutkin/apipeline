@@ -14,11 +14,9 @@ split1:
     startchan: 0 # start channel to split from
     nchan: 0 # 0 means till the end
 
-# TODO: skip
 clean0: # initial clean
     max_over_thresh: 250 # the threshold for initial CLEAN is set to image_max/max_over_thresh
-# TODO add fixed threshold of 100 uJy    
-
+# TODO add fixed threshold of 100 uJy
 
 clean1: # wsclean setup
     imagesize: 3072
@@ -29,7 +27,7 @@ clean1: # wsclean setup
     autothresh: 5
     multiscale: False
     clip_model_level: null # use a float number to clip the model to above this level. null is None.
-    kwstring: '-use-wgridder -parallel-deconvolution 1400' # use this for additional wsclean options, e.g. '-weight uniform -use-idg' 
+    kwstring: '-use-wgridder -parallel-deconvolution 1400 -weight briggs 0.0' # use this for additional wsclean options, e.g. '-weight uniform -use-idg' 
 
 dical1: # DPPP setup for direction independent calibration
     solint: 20
@@ -46,7 +44,7 @@ clean2:
     autothresh: 5
     multiscale: True
     clip_model_level: null
-    kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3'
+    kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels -weight briggs 0.0'
     
 dical2:
     solint: 1
@@ -62,7 +60,7 @@ clean3:
     autothresh: 3.5
     multiscale: True
     clip_model_level: null
-    kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3'
+    kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3 -weight briggs 0.0'
     
 dical3:
     solint: 240
