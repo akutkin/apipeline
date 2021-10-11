@@ -2,7 +2,7 @@
 # Settings for imcal
 #:===========================================================================
 #global: # provide executables here
-#    dppp_bin: 'DPPP' 
+#    dppp_bin: 'DPPP'
 #    wsclean_bin: 'wsclean'
 #    makesourcedb_bin: 'makesourcedb'
 #    bbs2model_bin: 'bbs2model'
@@ -20,14 +20,14 @@ clean0: # initial clean
 
 clean1: # wsclean setup
     imagesize: 3072
-    pixelsize: 3 
+    pixelsize: 3
     multifreq: 0
     mgain: 0
     automask: 20
     autothresh: 5
     multiscale: False
     clip_model_level: null # use a float number to clip the model to above this level. null is None.
-    kwstring: '-use-wgridder -parallel-deconvolution 1400 -weight briggs 0.0' # use this for additional wsclean options, e.g. '-weight uniform -use-idg' 
+    kwstring: '-use-wgridder -parallel-deconvolution 1400 -weight briggs 0.0' # use this for additional wsclean options, e.g. '-weight uniform -use-idg'
 
 dical1: # DPPP setup for direction independent calibration
     solint: 20
@@ -39,13 +39,13 @@ clean2:
     imagesize: 3072
     pixelsize: 3
     mgain: 0
-    multifreq: 6  
+    multifreq: 6
     automask: 10
     autothresh: 5
     multiscale: True
     clip_model_level: null
     kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels -weight briggs 0.0'
-    
+
 dical2:
     solint: 1
     mode: 'phaseonly'
@@ -54,20 +54,20 @@ dical2:
 
 clean3:
     imagesize: 3072
-    pixelsize: 3 
-    multifreq: 6  
+    pixelsize: 3
+    multifreq: 6
     automask: 7
     autothresh: 3.5
     multiscale: True
     clip_model_level: null
     kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3 -weight briggs 0.0'
-    
+
 dical3:
     solint: 240
     mode: 'diagonal'
     uvlambdamin: 500 # Ignore baselines / channels with UV < uvlambdamin wavelengths.
     cal_nchan: 72 # number of chans with the same solutions.
-    
+
 clean4:
     imagesize: 3072
     pixelsize: 3
@@ -83,16 +83,16 @@ cluster:
     nbright: 80 # number of brightest clean components (CC) to check for artefacts
     boxsize: 250 # the boxsize around CC in pixels where to check for artefacts
     nclusters: 6 # number of clusters ('auto' -- to set automatically)
-    clustering_method: 'Voronoi' 
-# the following is only for 'auto' and 'manual' mathods:    
+    clustering_method: 'Voronoi'
+# the following is only for 'auto' and 'manual' mathods:
     cluster_radius: 5 # arcmin
-    cluster_overlap: 2 # if lower than 2 clusters can intersect 
+    cluster_overlap: 2 # if lower than 2 clusters can intersect
     add_manual: False
 
 ######################## DD CALIBRATION #######################
 ddcal: # see DPPP/DDECal documentation
     solint: 60 # Solution interval in timesteps (1 corresponds to 30 seconds for Apertif).
-    mode: 'diagonal' # Type of constraint to apply. 
+    mode: 'diagonal' # Type of constraint to apply.
     nfreq: 72 # Number of channels in each channel block, for which the solution is assumed to be constant.
     startchan: 0
     minvisratio: 0.6
@@ -103,18 +103,18 @@ clean5:
     imagesize: 3072
     pixelsize: 3
     multifreq: 8
-    automask: 5.0
+#    automask: 0
     autothresh: 1.0
     multiscale: True
     fitsmask: 'mask2.fits'
     clip_model_level: null
-    kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3 -weight briggs -1.5'    
-    
+    kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3 -weight briggs -1.5'
+
 ### END
 
 
-## TODO:    
+## TODO:
 #plotsols:
-#    
+#
 
-    
+
