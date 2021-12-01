@@ -11,7 +11,7 @@
 ####################### IMAGING #######################
 
 split1:
-    startchan: 0 # start channel to split from
+    startchan: 40 # start channel to split from
     nchan: 0 # 0 means till the end
 
 clean0: # initial clean
@@ -44,7 +44,7 @@ clean2:
     autothresh: 5
     multiscale: True
     clip_model_level: null
-    kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels -weight briggs 0.0'
+    kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3 -weight briggs 0.0'
 
 dical2:
     solint: 1
@@ -103,10 +103,10 @@ clean5:
     imagesize: 3072
     pixelsize: 3
     multifreq: 8
-#    automask: 0
-    autothresh: 1.0
+    automask: 4
+    autothresh: 0.5
     multiscale: True
-    fitsmask: 'mask2.fits'
+    fitsmask: null
     clip_model_level: null
     kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3 -weight briggs -1.5'
 

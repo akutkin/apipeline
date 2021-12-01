@@ -241,47 +241,54 @@ def phase_shift(msin, new_center, msout=None):
 
 def view_sols(h5param, outname=None):
     """ read and plot the gains """
-    path = os.path.split(os.path.abspath(h5param))[0]
     def plot_sols(h5param, key):
+        print('AAA')
+        figs = []
+        axs = []
         with h5py.File(h5param, 'r') as f:
             grp = f['sol000/{}'.format(key)]
             data = grp['val'][()]
             time = grp['time'][()]
-            print(data.shape)
             ants = ['RT2','RT3','RT4','RT5','RT6','RT7','RT8','RT9','RTA','RTB','RTC','RTD']
-            fig = plt.figure(figsize=[20, 15])
-            fig.suptitle('Freq. averaged {} gain solutions'.format(key.rstrip('000')))
-            for i, ant in enumerate(ants):
-                ax = fig.add_subplot(4, 3, i+1)
-                ax.set_title(ant)
-                if len(data.shape) == 5: # several directions
-                    # a = ax.imshow(data[:,:,i,1,0].T, aspect='auto')
-                    # plt.colorbar(a)
-                    gavg = np.nanmean(data, axis=1)
-                    ax.plot((time-time[0])/60.0, gavg[:, i, :, 0], alpha=0.7)
-                elif len(data.shape) == 4: # a single direction
-                    ax.plot((time-time[0])/3600.0, data[:, 0, i, 0], alpha=0.7)
+            for ipol, pol in enumerate(['XX', 'YY']):
+                fig = plt.figure(figsize=[20, 15])
+                fig.suptitle('Freq. averaged {} gain solutions ({})'.format(key.rstrip('000'), pol))
+                print(dict(f['sol000/amplitude000/val'].attrs.items())) # h5 attributes
+                for i, ant in enumerate(ants):
+                    ax = fig.add_subplot(4, 3, i+1)
+                    ax.set_title(ant)
+                    gavg = np.nanmean(data, axis=1)[...,ipol] # average by frequency
+                    if key.startswith('phase'):
+                        ax.plot((time-time[0])/3600.0, gavg[:, i,]*180.0/np.pi, alpha=0.7)
+                        ax.set_ylim([-180,180])
+                    else:
+                        ax.plot((time-time[0])/3600.0, gavg[:, i,], alpha=0.7)
+                    if key.startswith('amplitude'):
+                        ax.set_ylim([-0.1,2.1])
+                    if i == 0:
+                        ax.legend(['c{}'.format(_) for _ in range(data.shape[-2])])
+                    if i == 10:
+                        ax.set_xlabel('Time (hrs)')
 
-                if i == 0:
-                    ax.legend(['c{}'.format(_) for _ in range(data.shape[-2])])
-                if i == 10:
-                    ax.set_xlabel('Time (hrs)')
-        return fig, ax
+                figs.append(fig)
+                axs.append(ax)
+        return figs, axs
 
-    if outname is not None:
-        try:
-            fig1, ax1 = plot_sols(h5param, 'amplitude000')
-            fig1.savefig(f'{outname}_amp.png')
-        except:
-            logging.error('No amplitude solutions found')
+    try:
+        (fig1, fig2), (ax1, ax2) = plot_sols(h5param, 'amplitude000')
+        if outname is not None:
+            fig1.savefig(f'{outname}_amp_XX.png')
+            fig2.savefig(f'{outname}_amp_YY.png')
+    except:
+        logging.error('No amplitude solutions found')
+    try:
+        (fig1, fig2), (ax1, ax2) = plot_sols(h5param, 'phase000')
+        if outname is not None:
+            fig1.savefig(f'{outname}_phase_XX.png')
+            fig2.savefig(f'{outname}_phase_YY.png')
+    except:
+        logging.error('No phase solutions found')
 
-        try:
-            fig2, ax2 = plot_sols(h5param, 'phase000')
-            fig2.savefig(f'{outname}_phase.png')
-        except:
-            logging.error('No phase solutions found')
-
-    # plt.show()
 
 def remove_model_components_below_level(model, level=0.0, out=None):
     """
@@ -359,6 +366,8 @@ def main(msin, outbase=None, cfgfile='imcal.yml'):
 
     if (not os.path.exists(ms_split)) and (cfg['split1']['startchan'] or cfg['split1']['nchan']):
         ms_split = split_ms(msin, msout_path=ms_split, **cfg['split1'])
+    else:
+        ms_split = msin
 
 # Clean + DIcal
 
