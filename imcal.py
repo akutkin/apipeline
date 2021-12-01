@@ -250,21 +250,21 @@ def view_sols(h5param, outname=None):
             data = grp['val'][()]
             time = grp['time'][()]
             ants = ['RT2','RT3','RT4','RT5','RT6','RT7','RT8','RT9','RTA','RTB','RTC','RTD']
+            freq_avg_gains = np.nanmean(data, axis=1)  # average by frequency
+            print(dict(f['sol000/amplitude000/val'].attrs.items())) # h5 attributes
             for ipol, pol in enumerate(['XX', 'YY']):
                 fig = plt.figure(figsize=[20, 15])
                 fig.suptitle('Freq. averaged {} gain solutions ({})'.format(key.rstrip('000'), pol))
-                print(dict(f['sol000/amplitude000/val'].attrs.items())) # h5 attributes
                 for i, ant in enumerate(ants):
                     ax = fig.add_subplot(4, 3, i+1)
                     ax.set_title(ant)
-                    gavg = np.nanmean(data, axis=1)[...,ipol] # average by frequency
                     if key.startswith('phase'):
-                        ax.plot((time-time[0])/3600.0, gavg[:, i,]*180.0/np.pi, alpha=0.7)
+                        ax.plot((time-time[0])/3600.0, freq_avg_gains[:, i,...,ipol]*180.0/np.pi, alpha=0.7)
                         ax.set_ylim([-180,180])
                     else:
-                        ax.plot((time-time[0])/3600.0, gavg[:, i,], alpha=0.7)
+                        ax.plot((time-time[0])/3600.0, freq_avg_gains[:, i,...,ipol], alpha=0.7)
                     if key.startswith('amplitude'):
-                        ax.set_ylim([-0.1,2.1])
+                        ax.set_ylim([-0.1, np.max(freq_avg_gains)])
                     if i == 0:
                         ax.legend(['c{}'.format(_) for _ in range(data.shape[-2])])
                     if i == 10:
