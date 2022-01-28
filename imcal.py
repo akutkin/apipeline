@@ -42,7 +42,7 @@ def modify_filename(fname, string, ext=None):
     return fbase + string + fext
 
 
-def wsclean(msin, outname=None, pixelsize=3, imagesize=3072, mgain=0.8, multifreq=0, autothresh=0.3,
+def wsclean(msin, datacolumn='DATA', outname=None, pixelsize=3, imagesize=3072, mgain=0.8, multifreq=0, autothresh=0.3,
             automask=3, niter=1000000, multiscale=False, save_source_list=True,
             clearfiles=True, clip_model_level=None,
             fitsmask=None, kwstring=''):
@@ -67,7 +67,7 @@ def wsclean(msin, outname=None, pixelsize=3, imagesize=3072, mgain=0.8, multifre
     if fitsmask:
         kwstring += f' -fits-mask {fitsmask}'
 
-    cmd = f'wsclean -name {outname} -size {imagesize} {imagesize} -scale {pixelsize}asec -niter {niter} \
+    cmd = f'wsclean -name {outname} -data-column {datacolumn} -size {imagesize} {imagesize} -scale {pixelsize}asec -niter {niter} \
             {kwstring} {msin}'
     cmd = " ".join(cmd.split())
     logging.debug("Running command: %s", cmd)
@@ -199,6 +199,7 @@ def dical(msin, srcdb, msout=None, h5out=None, solint=1, startchan=0, split_ncha
     check_return_code(return_code)
     return msout
 
+
 def ddecal(msin, srcdb, msout=None, h5out=None, solint=120, nfreq=30,
            startchan=0, nchan=0, minvisratio=0.6, mode='diagonal', uvlambdamin=500, subtract=True):
     """ Perform direction dependent calibration with DPPP """
@@ -317,6 +318,28 @@ def remove_model_components_below_level(model, level=0.0, out=None):
     return out
 
 
+def apply_ddcal_sols(msin, parmdb, msout='.', msout_datacolumn='CORRECTED_DATA', amp_interp = 'nearest', ph_interp = 'nearest'):
+    """ apply calibration solution from h5file """
+
+    with h5py.File(parmdb, 'r') as f:
+        directions = list(dict(f['sol000/source']).keys())
+
+    dir_names = [i.decode().strip('[]') for i in directions]
+    dp3args = [f'msin={msin}', 'msin.datacolumn=DATA', 'msout=.', 'msout.datacolumn=CORRECTED_DATA',
+               f'steps={dir_names}']
+    for d in dir_names:
+        dp3args += [f'{d}.type=applycal',
+                    f'{d}.parmdb={parmdb}',
+                    f'{d}.steps=[ph,amp]',
+                    f'{d}.amp.correction=amplitude000',
+                    f'{d}.ph.correction=phase000',
+                    f'{d}.amp.interpolation={amp_interp}',
+                    f'{d}.ph.interpolation={ph_interp}',
+                    f'{d}.direction={[d]}',
+                    ]
+    execute_dppp(dp3args)
+
+
 def main(msin, outbase=None, cfgfile='imcal.yml'):
     msin = msin.rstrip('/')
     logging.info('Processing {}'.format(msin))
@@ -361,8 +384,8 @@ def main(msin, outbase=None, cfgfile='imcal.yml'):
 
 
     if os.path.exists(img_ddcal+'-image.fits'):
-        logging.info('The final image exists. Exiting...')
-        return 0
+        logging.warning('The final image exists!..')
+        # return 0
 
     if (not os.path.exists(ms_split)) and (cfg['split1']['startchan'] or cfg['split1']['nchan']):
         ms_split = split_ms(msin, msout_path=ms_split, **cfg['split1'])
@@ -428,9 +451,15 @@ def main(msin, outbase=None, cfgfile='imcal.yml'):
 # DDE calibration + peeling everything
     if (not os.path.exists(ddsub)):
         ddsub, h5out = ddecal(dical3, clustered_sdb, msout=ddsub, h5out=h5_dd, **cfg['ddcal'])
-
 # view the solutions and save figure
         view_sols(h5_dd, outname=msbase+'_sols_ddcal')
+
+
+# Apply DDEcal soulutions to dical3
+
+    # apply_ddcal_sols(dical3, h5_dd) # does not work -- image is bad. Can you apply all solution to all directions with DP3?
+    # wsclean(dical3, datacolumn='CORRECTED_DATA', outname='test_apply_ddcal', **cfg['clean4'])
+    # sys.exit('planned')
 
     if (not os.path.exists(img_ddsub+'-image.fits')):
         wsclean(ddsub, outname=img_ddsub, **cfg['clean4'])
