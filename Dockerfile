@@ -107,7 +107,7 @@ RUN \
   cd
 
 ########################################################################################
-# AO tools  
+# AO tools
 RUN \
     cd /software && \
     git clone https://github.com/aroffringa/modeltools.git modeltools && \
@@ -117,7 +117,7 @@ RUN \
     cmake -DPORTABLE=True ../ && \
     make -j4 && \
     cp bbs2model cluster editmodel render /usr/local/bin/
-    
+
 # Python stuff
 RUN python3 -m pip install h5py pandas pyyaml
 
@@ -126,8 +126,10 @@ ADD makemask /software/makemask
 RUN cd /software/makemask && \
     gcc makeMaskFits.c -o makeMaskFits -lcfitsio -lm && \
     gcc makeNoiseMapFits.c -o makeNoiseMapFits -lcfitsio -lm && \
-    cp makeMaskFits makeNoiseMapFits /usr/local/bin/
-    
+    gcc makeNoiseMapFitsLow.c -o makeNoiseMapFitsLow -lcfitsio -lm && \
+    gcc  makeCombMaskFits.c -o  makeCombMaskFits -lcfitsio -lm && \
+    cp makeMaskFits makeNoiseMapFits makeCombMaskFits makeNoiseMapFitsLow /usr/local/bin/
+
 # kvis
 #RUN cd /software && \
 #    apt-get install -y libxaw7 && \
@@ -139,7 +141,7 @@ RUN cd /software/makemask && \
 #    ln -s /usr/local/karma/amd64_Linux_libc6.3/bin/./kvis /usr/local/bin/kvis && \
 #    ln -s /usr/local/karma/amd64_Linux_libc6.3/bin/./kshell /usr/local/bin/kshell && \
 #    ln -s /usr/local/karma/amd64_Linux_libc6.3/bin/./kpvslice /usr/local/bin/kpvslice
-#ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/karma/amd64_Linux_libc6.3/lib/ 
+#ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/karma/amd64_Linux_libc6.3/lib/
 #ENV KARMABASE="/usr/local/karma/amd64_Linux_libc6.3"
 
 
@@ -148,11 +150,11 @@ ADD imcal.py /opt/imcal.py
 ADD cluster.py /opt/cluster.py
 ADD imcal.yml /opt/imcal.yml
 RUN ln -s /opt/imcal.py /usr/local/bin/imcal.py
-    
-# Clean 
+
+# Clean
 #RUN rm -rf /software/*
 
 
 
 
-    
+
