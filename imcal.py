@@ -86,17 +86,51 @@ def wsclean(msin, datacolumn='DATA', outname=None, pixelsize=3, imagesize=3072, 
     return 0
 
 
+def smoothImage(imgfits) :
+    """
+    Smoothe an image
+    """
+    cmd = f'smoFits.py {imgfits}'
+    logging.debug("Running command: %s", cmd)
+    subprocess.call(cmd, shell=True)
+    return
+
+
 def create_mask(imgfits, residfits, clipval, outname='mask.fits'):
     """
     Create mask using Tom's code (e-mail on 1 Jul 2021)
     """
-    cmd = f'makeNoiseMapFits {imgfits} {residfits} noise.fits noiseMap.fits'
+    cmd = f'makeNoiseMapFitsLow {imgfits} {residfits} noise.fits noiseMap.fits'
     logging.debug("Running command: %s", cmd)
     subprocess.call(cmd, shell=True)
     cmd = f'makeMaskFits noiseMap.fits {outname} {clipval}'
     logging.debug("Running command: %s", cmd)
     subprocess.call(cmd, shell=True)
     return outname
+
+
+def makeNoiseImage(imgfits, residfits, low=False) :
+    """
+    Create mask using Tom's code (e-mail on 1 Jul 2021)
+    """
+    if low:
+      cmd = f'makeNoiseMapFitsLow {imgfits} {residfits} noiseLow.fits noiseMapLow.fits'
+    else :
+      cmd = f'makeNoiseMapFits {imgfits} {residfits} noise.fits noiseMap.fits'
+    logging.debug("Running command: %s", cmd)
+    subprocess.call(cmd, shell=True)
+    return
+
+
+def makeCombMask(ima1='noiseMap.fits', ima2='noiseMapLow.fits',
+		 clip1=5, clip2=7, outname='mask.fits') :
+    """
+    Create mask using Tom's code (e-mail on 1 Jul 2021)
+    """
+    cmd = f'makeCombMaskFits {ima1} {ima2} {outname} {clip1} {clip2}'
+    logging.debug("Running command: %s", cmd)
+    subprocess.call(cmd, shell=True)
+    return
 
 
 def get_image_max(msin):
@@ -187,8 +221,8 @@ def dical(msin, srcdb, msout=None, h5out=None, solint=1, startchan=0, split_ncha
            f'cal.solint={solint}',
            f'cal.parmdb={h5out}',
            f'cal.nchan={cal_nchan}',
-           f'cal.uvlambdamin={uvlambdamin}',
            'cal.applysolution=True',
+           'cal.blrange=[100,1000000]',
            'cal.type=gaincal',
            'steps=[cal]']
     if startchan or split_nchan:
@@ -199,9 +233,8 @@ def dical(msin, srcdb, msout=None, h5out=None, solint=1, startchan=0, split_ncha
     check_return_code(return_code)
     return msout
 
-
 def ddecal(msin, srcdb, msout=None, h5out=None, solint=120, nfreq=30,
-           startchan=0, nchan=0, minvisratio=0.6, mode='diagonal', uvlambdamin=500, subtract=True):
+           startchan=0, nchan=0,  mode='diagonal', uvlambdamin=500, subtract=True):
     """ Perform direction dependent calibration with DPPP """
     h5out = h5out or os.path.split(msin)[0] + '/ddcal.h5'
     msbase = os.path.basename(msin).split('.')[0]
@@ -218,13 +251,12 @@ def ddecal(msin, srcdb, msout=None, h5out=None, solint=120, nfreq=30,
           cal.subtract={subtract} \
           cal.propagatesolutions=true \
           cal.propagateconvergedonly=true \
-          cal.minvisratio={minvisratio} \
           cal.nchan={nfreq} \
           cal.uvlambdamin={uvlambdamin} \
           steps=[cal] \
           '.format(msin=msin, msout=msout, startchan=startchan, nchan=nchan, mode=mode,
             srcdb=srcdb, solint=solint, h5out=h5out, subtract=subtract, nfreq=nfreq,
-            minvisratio=minvisratio, uvlambdamin=uvlambdamin)
+            uvlambdamin=uvlambdamin)
     cmd = " ".join(cmd.split())
     logging.debug("Running command: %s", cmd)
     subprocess.call(cmd, shell=True)
@@ -243,52 +275,63 @@ def phase_shift(msin, new_center, msout=None):
 def view_sols(h5param, outname=None):
     """ read and plot the gains """
     def plot_sols(h5param, key):
-        print('AAA')
-        figs = []
-        axs = []
         with h5py.File(h5param, 'r') as f:
             grp = f['sol000/{}'.format(key)]
             data = grp['val'][()]
             time = grp['time'][()]
             ants = ['RT2','RT3','RT4','RT5','RT6','RT7','RT8','RT9','RTA','RTB','RTC','RTD']
-            freq_avg_gains = np.nanmean(data, axis=1)  # average by frequency
-            print(dict(f['sol000/amplitude000/val'].attrs.items())) # h5 attributes
-            for ipol, pol in enumerate(['XX', 'YY']):
-                fig = plt.figure(figsize=[20, 15])
-                fig.suptitle('Freq. averaged {} gain solutions ({})'.format(key.rstrip('000'), pol))
-                for i, ant in enumerate(ants):
-                    ax = fig.add_subplot(4, 3, i+1)
-                    ax.set_title(ant)
-                    if key.startswith('phase'):
-                        ax.plot((time-time[0])/3600.0, freq_avg_gains[:, i,...,ipol]*180.0/np.pi, alpha=0.7)
-                        ax.set_ylim([-180,180])
-                    else:
-                        ax.plot((time-time[0])/3600.0, freq_avg_gains[:, i,...,ipol], alpha=0.7)
-                    if key.startswith('amplitude'):
-                        ax.set_ylim([-0.1, np.max(freq_avg_gains)])
+            fig = plt.figure(figsize=[20, 15])
+            fig.suptitle('Freq. averaged {} gain solutions'.format(key.rstrip('000')))
+            for i, ant in enumerate(ants):
+                ax = fig.add_subplot(4, 3, i+1)
+                ax.set_title(ant)
+                if key == 'amplitude000' :
+                   ax.set_ylim(0,2)
+                else :
+                   ax.set_ylim(-180,180)
+                if len(data.shape) == 5: # several directions
+                    # a = ax.imshow(data[:,:,i,1,0].T, aspect='auto')
+                    # plt.colorbar(a)
+                    gavg = np.nanmean(data, axis=1)
+                    if key == 'amplitude000' :
+                      ax.plot((time-time[0])/60.0, gavg[:, i, :, 0], alpha=0.7)
+                      ax.plot((time-time[0])/60.0, gavg[:, i, :, 1], alpha=0.7)
+                    else :
+                      ax.plot((time-time[0])/60.0, 360.0/np.pi*gavg[:, i, :, 0], alpha=0.7)
+                      ax.plot((time-time[0])/60.0, 360.0/np.pi*gavg[:, i, :, 1], alpha=0.7)
+
+                elif len(data.shape) == 4: # a single direction
+                    if key == 'amplitude000' :
+                      gavg = np.nanmean(data,axis=1)
+#                      ax.plot((time-time[0])/3600.0, data[:, 0, i, 0], alpha=0.7)
+                      ax.plot((time-time[0])/3600.0, gavg[:,  i, 0], alpha=0.7,label='XX')
+                      ax.plot((time-time[0])/3600.0, gavg[:,  i, 0], alpha=0.7,label='YY')
+                    else :
+                      gavg = np.nanmean(data,axis=1)
+#                      ax.plot((time-time[0])/3600.0, 360.0/np.pi*data[:, 0, i, 0], alpha=0.7)
+#                      ax.plot((time-time[0])/3600.0, 360.0/np.pi*data[:,3 , i, 0], alpha=0.7)
+                      ax.plot((time-time[0])/3600.0, 360.0/np.pi*gavg[:,  i, 0], alpha=0.7,label='XX')
+                      ax.plot((time-time[0])/3600.0, 360.0/np.pi*gavg[:,  i, 1], alpha=0.7,label='YY')
+
+
                     if i == 0:
-                        ax.legend(['c{}'.format(_) for _ in range(data.shape[-2])])
-                    if i == 10:
-                        ax.set_xlabel('Time (hrs)')
+                      ax.legend(['XX','YY'])
+                if i == 10:
+                    ax.set_xlabel('Time (hrs)')
+        return fig, ax
 
-                figs.append(fig)
-                axs.append(ax)
-        return figs, axs
+    if outname is not None:
+        try:
+            fig1, ax1 = plot_sols(h5param, 'amplitude000')
+            fig1.savefig(f'{outname}_amp.png')
+        except:
+            logging.error('No amplitude solutions found')
 
-    try:
-        (fig1, fig2), (ax1, ax2) = plot_sols(h5param, 'amplitude000')
-        if outname is not None:
-            fig1.savefig(f'{outname}_amp_XX.png')
-            fig2.savefig(f'{outname}_amp_YY.png')
-    except:
-        logging.error('No amplitude solutions found')
-    try:
-        (fig1, fig2), (ax1, ax2) = plot_sols(h5param, 'phase000')
-        if outname is not None:
-            fig1.savefig(f'{outname}_phase_XX.png')
-            fig2.savefig(f'{outname}_phase_YY.png')
-    except:
-        logging.error('No phase solutions found')
+        try:
+            fig2, ax2 = plot_sols(h5param, 'phase000')
+            fig2.savefig(f'{outname}_phase.png')
+        except:
+            logging.error('No phase solutions found')
 
 
 def remove_model_components_below_level(model, level=0.0, out=None):
@@ -318,28 +361,6 @@ def remove_model_components_below_level(model, level=0.0, out=None):
     return out
 
 
-def apply_ddcal_sols(msin, parmdb, msout='.', msout_datacolumn='CORRECTED_DATA', amp_interp = 'nearest', ph_interp = 'nearest'):
-    """ apply calibration solution from h5file """
-
-    with h5py.File(parmdb, 'r') as f:
-        directions = list(dict(f['sol000/source']).keys())
-
-    dir_names = [i.decode().strip('[]') for i in directions]
-    dp3args = [f'msin={msin}', 'msin.datacolumn=DATA', 'msout=.', 'msout.datacolumn=CORRECTED_DATA',
-               f'steps={dir_names}']
-    for d in dir_names:
-        dp3args += [f'{d}.type=applycal',
-                    f'{d}.parmdb={parmdb}',
-                    f'{d}.steps=[ph,amp]',
-                    f'{d}.amp.correction=amplitude000',
-                    f'{d}.ph.correction=phase000',
-                    f'{d}.amp.interpolation={amp_interp}',
-                    f'{d}.ph.interpolation={ph_interp}',
-                    f'{d}.direction={[d]}',
-                    ]
-    execute_dppp(dp3args)
-
-
 def main(msin, outbase=None, cfgfile='imcal.yml'):
     msin = msin.rstrip('/')
     logging.info('Processing {}'.format(msin))
@@ -367,54 +388,69 @@ def main(msin, outbase=None, cfgfile='imcal.yml'):
     mask0 = outbase + '-mask0.fits'
     mask1 = outbase + '-mask1.fits'
     mask2 = outbase + '-mask2.fits'
+    mask3 = outbase + '-mask3.fits'
+    mask4 = outbase + '-mask4.fits'
 
+    nvssMod = outbase + '_nvss.sourcedb'
     model1 = outbase + '_model1.sourcedb'
     model2 = outbase + '_model2.sourcedb'
     model3 = outbase + '_model3.sourcedb'
 
+    dical0 = outbase + '_dical0.MS'
     dical1 = outbase + '_dical1.MS'
     dical2 = outbase + '_dical2.MS'
     dical3 = outbase + '_dical3.MS'
     ddsub = outbase + '_ddsub.MS'
 
+    h5_0 = outbase + '_dical0.h5'
     h5_1 = outbase + '_dical1.h5'
     h5_2 = outbase + '_dical2.h5'
     h5_3 = outbase + '_dical3.h5'
-    h5_dd = outbase + '_dd.h5'
+    h5_dd = outbase + '_ddcal.h5'
 
 
     if os.path.exists(img_ddcal+'-image.fits'):
-        logging.warning('The final image exists!..')
-        # return 0
+        logging.info('The final image exists. Exiting...')
+        return 0
 
-    if (not os.path.exists(ms_split)) and (cfg['split1']['startchan'] or cfg['split1']['nchan']):
-        ms_split = split_ms(msin, msout_path=ms_split, **cfg['split1'])
-    else:
-        ms_split = msin
+    if cfg['nvss']['doit'] :
+#    if (not os.path.exists(ms_split)) and (cfg['split1']['startchan'] or cfg['split1']['nchan']):
+       ms_split = split_ms(msin, msout_path=ms_split, **cfg['split1'])
 
-# Clean + DIcal
+       print('------------------makesource')
+       makesourcedb('nvss-model.txt', out=nvssMod)
+       print('-------------nvssCal')
+       dical(ms_split, nvssMod, msout=dical0, h5out=h5_0, **cfg['nvssCal'])
+       view_sols(h5_0, outname=msbase+'_sols_dical0')
+
+    else :
+       ms_split = split_ms(msin, msout_path=dical0, **cfg['split1'])
 
     if not os.path.exists(img0 +'-image.fits') and (not os.path.exists(img0 +'-MFS-image.fits')):
-        img_max = get_image_max(ms_split)
+        img_max = get_image_max(dical0)
         threshold = img_max/cfg['clean0']['max_over_thresh']
-        wsclean(ms_split, outname=img0, automask=None, save_source_list=False, multifreq=False, mgain=None,
+        threshold = max(threshold,0.001)
+        wsclean(dical0, outname=img0, automask=None, save_source_list=False, multifreq=False, mgain=None,
             kwstring=f'-threshold {threshold}')
-        create_mask(img0 +'-image.fits', img0 +'-residual.fits', clipval=20, outname=mask0)
+        create_mask(img0 +'-image.fits', img0 +'-residual.fits', clipval=10, outname=mask0)
 
 # clean1
     if not os.path.exists(img1 +'-image.fits') and (not os.path.exists(img1 +'-MFS-image.fits')):
-        wsclean(ms_split, fitsmask=mask0, outname=img1, **cfg['clean1']) # fast shallow clean
+        wsclean(dical0, fitsmask=mask0, outname=img1, **cfg['clean1']) # fast shallow clean
 
     if not os.path.exists(model1):
         makesourcedb(img1+'-sources.txt', out=model1)
 # dical1
     if not os.path.exists(dical1):
-        dical1 = dical(ms_split, model1, msout=dical1, h5out=h5_1, **cfg['dical1'])
+        dical1 = dical(dical0, model1, msout=dical1, h5out=h5_1, **cfg['dical1'])
         view_sols(h5_1, outname=msbase+'_sols_dical1')
 # clean2
     if (not os.path.exists(img2 +'-image.fits')) and (not os.path.exists(img2 +'-MFS-image.fits')):
         wsclean(dical1, fitsmask=mask0, outname=img2, **cfg['clean2'])
-        create_mask(img2 +'-image.fits', img2 +'-residual.fits', clipval=7, outname=mask1)
+        smoothImage(img2+'-residual.fits')
+        makeNoiseImage(img2 +'-image.fits', img2 +'-residual.fits')
+        makeNoiseImage(img2 +'-residual-smooth.fits', img2 +'-residual.fits',low=True)
+        makeCombMask(outname=mask1,clip1=7,clip2=15)
 
     if not os.path.exists(model2):
         makesourcedb(img2+'-sources.txt', out=model2)
@@ -426,7 +462,11 @@ def main(msin, outbase=None, cfgfile='imcal.yml'):
 # clean3
     if (not os.path.exists(img3 +'-image.fits')) and (not os.path.exists(img3 +'-MFS-image.fits')):
         wsclean(dical2, fitsmask=mask1, outname=img3, **cfg['clean3'])
-        create_mask(img3 +'-image.fits', img3 +'-residual.fits', clipval=5, outname=mask2)
+        smoothImage(img3+'-residual.fits')
+        makeNoiseImage(img3 +'-image.fits', img3 +'-residual.fits')
+        makeNoiseImage(img3 +'-residual-smooth.fits', img3 +'-residual.fits',low=True)
+        makeCombMask(outname=mask2,clip1=5,clip2=10)
+
 
     if not os.path.exists(model3):
         makesourcedb(img3+'-sources.txt', out=model3)
@@ -439,6 +479,10 @@ def main(msin, outbase=None, cfgfile='imcal.yml'):
 # clean4
     if (not os.path.exists(img_final +'-image.fits')) and (not os.path.exists(img_final +'-MFS-image.fits')):
         wsclean(dical3, fitsmask=mask2, outname=img_final, **cfg['clean4'])
+        smoothImage(img_final+'-residual.fits')
+        makeNoiseImage(img_final +'-image.fits', img_final +'-residual.fits')
+        makeNoiseImage(img_final +'-residual-smooth.fits', img_final +'-residual.fits',low=True)
+        makeCombMask(outname=mask3,clip1=5,clip2=7)
 
 
 # Cluster
@@ -451,24 +495,29 @@ def main(msin, outbase=None, cfgfile='imcal.yml'):
 # DDE calibration + peeling everything
     if (not os.path.exists(ddsub)):
         ddsub, h5out = ddecal(dical3, clustered_sdb, msout=ddsub, h5out=h5_dd, **cfg['ddcal'])
+
 # view the solutions and save figure
         view_sols(h5_dd, outname=msbase+'_sols_ddcal')
 
-
-# Apply DDEcal soulutions to dical3
-
-    # apply_ddcal_sols(dical3, h5_dd) # does not work -- image is bad. Can you apply all solution to all directions with DP3?
-    # wsclean(dical3, datacolumn='CORRECTED_DATA', outname='test_apply_ddcal', **cfg['clean4'])
-    # sys.exit('planned')
-
     if (not os.path.exists(img_ddsub+'-image.fits')):
-        wsclean(ddsub, outname=img_ddsub, **cfg['clean4'])
+        wsclean(ddsub, fitsmask=mask3,outname=img_ddsub, **cfg['clean5'])
+#TAO        wsclean(ddsub,outname=img_ddsub, **cfg['clean5'])
 
     aomodel = bbs2model(img_final+'-sources.txt', img_final+'-model.ao')
 
     render(img_ddsub+'-image.fits', aomodel, out=img_ddcal+'-image.fits')
 
+    smoothImage(img_ddsub+'-image.fits')
+    makeNoiseImage(img_ddcal +'-image.fits', img_ddsub +'-residual.fits')
+    makeNoiseImage(img_ddsub +'-image-smooth.fits', img_ddsub +'-residual.fits',low=True)
+    makeCombMask(outname=mask4,clip1=3.5,clip2=5)
 
+    if (not os.path.exists(img_ddsub+'-2-image.fits')):
+        wsclean(ddsub, fitsmask=mask4,outname=img_ddsub+'-2', **cfg['clean5'])
+#TAO        wsclean(ddsub,outname=img_ddsub, **cfg['clean5'])
+
+    aomodel = bbs2model(img_final+'-sources.txt', img_final+'-model.ao')
+    render(img_ddsub+'-2-image.fits', aomodel, out=img_ddcal+'-2-image.fits')
 
     return 0
 

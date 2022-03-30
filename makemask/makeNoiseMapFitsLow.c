@@ -25,17 +25,17 @@ int main(int argc, char **argv) {
   fitsfile *outSN;        /* pointer to output S/N image */
 
   int status, morekeys, hdutype;
-  int ii, jj,  numP, i, j, n, m, ind;
+  int ii, jj, i, j, n, m, ind;
   int naxis;
   int xlen, ylen;
     
   int maxdim;
-  long  nelements, index;;
+  long  nelements, index, numP;;
   long naxes[10];
   int bitpix = FLOAT_IMG ; /* output image is floats; BITPIX = -32*/
     
   float *imArray, *resArray, *noiseArray, *snArray;
-  float tmpAr[1024];
+  float tmpAr[4096];
     
   int boxsize;
   int nullval ;
@@ -44,13 +44,13 @@ int main(int argc, char **argv) {
   
   status = 0;
   maxdim = 10;
-  boxsize = 13;
+  boxsize = 50;
 
   if (argc != 5) {
-    puts("makeNoiseMapFits inImage inResidual outNoise ourNoiseMap");
+    puts("makeNoiseMapFitsLow.c inImage inResidual outNoise outNoiseMap");
     exit(1);
   }
-        
+
   /* open the existing image */
   fits_open_file(&inImage, argv[1], READONLY, &status) ;
   /* open the residual image */
@@ -66,11 +66,13 @@ int main(int argc, char **argv) {
   xlen = naxes[0];
   ylen = naxes[1];
 
+
   /* allocare memeory for the arrays */
   imArray = (float *)malloc(nelements*sizeof(float));
   resArray = (float *)malloc(nelements*sizeof(float));
   noiseArray = (float *)malloc(nelements*sizeof(float));
   snArray = (float *)malloc(nelements*sizeof(float));
+
 
   /* don't check for null values */
   nullval = 0;
@@ -82,10 +84,12 @@ int main(int argc, char **argv) {
   fits_read_img(inRes, TFLOAT, 1, nelements, &nullval,
                resArray, &anynull, &status) ;
 
+
   /* set outpit noise array to zero */
   for (ii = 0; ii < nelements; ii++) {
     noiseArray[ii] = 0.0;
   }
+
 
   /* number of pixels in the box for which we compute the median */
   numP = (2*boxsize+1)*(2*boxsize+1);
@@ -93,16 +97,15 @@ int main(int argc, char **argv) {
   numP = numP/2;
 
   /* loop over image in steps of 5 pixels */
-  for (i = boxsize; i < xlen-boxsize; i=i+5) {
-    for (j = boxsize; j < ylen-boxsize; j= j+5) {
-
+  for (i = boxsize; i < xlen-boxsize-1; i=i+9) {
+    for (j = boxsize; j < ylen-boxsize-1; j= j+9) {
       /* get the median for the current box */
 
       /* reset index */
       ind = 0;
       /* loop over box, putting absolute value of the image value in temp array */
-      for (m = -boxsize; m <= boxsize; m++) {
-        for (n = -boxsize; n <= boxsize; n++) {
+      for (m = -boxsize; m <= boxsize; m=m+5) {
+        for (n = -boxsize; n <= boxsize; n=n+5) {
           index = i+n + xlen*(j+m);
           tmpAr[ind] = fabs(resArray[index]);
           ind++;
@@ -112,10 +115,10 @@ int main(int argc, char **argv) {
       /* sort the temp array and take the central value */
       qsort(tmpAr,ind,sizeof(float),comp);
       /* multiply by 1.4826 to turn the median absolute value into sigma */
-      sig = tmpAr[numP]*1.4826;
+      sig = tmpAr[ind/2]*1.4826;
       /* and put this value in the output noise image */
-      for (m = -2; m < 3; m++) {
-        for (n = -2; n < 3; n++) {
+      for (m = -4; m < 5; m++) {
+        for (n = -4; n < 5; n++) {
           index = i+m + xlen*(j+n) ;
           noiseArray[index]= sig;
           /* if not zero, compute the S/N, i.e. the image value / noise value */
