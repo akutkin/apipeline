@@ -237,7 +237,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         python3-casacore \
         python3-distutils \
         python3-ipython \
-        wget && \
+        wget \
         git && \
     rm -rf /var/lib/apt/lists/*
 
