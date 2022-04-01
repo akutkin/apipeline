@@ -238,6 +238,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         python3-distutils \
         python3-ipython \
         wget && \
+        git && \
     rm -rf /var/lib/apt/lists/*
 
 
