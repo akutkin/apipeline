@@ -181,7 +181,7 @@ RUN cd /src/makemask && \
 # reduce the size of the image.
 #---------------------------------------------------------------------------
 FROM ubuntu:20.04 as runner
-
+RUN mkdir /src
 COPY --from=builder /usr/local /usr/local
 RUN chmod +rx /usr/local/bin/*
 
@@ -252,9 +252,9 @@ RUN wget -q -O /WSRT_Measures.ztar \
 
 # Some python stuff
 RUN python3 -m pip install h5py pandas pyyaml astropy matplotlib numpy scipy && \
-    cd /software && \
+    cd /src && \
     git clone https://github.com/lofar-astron/PyBDSF.git && \
-    cd /software/PyBDSF && \
+    cd /src/PyBDSF && \
     python3 -m pip install . && \
     cd    
     
