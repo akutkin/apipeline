@@ -1,31 +1,36 @@
 #:===========================================================================
 # Settings for imcal
 #:===========================================================================
-#global: # provide executables here
-#    dppp_bin: 'DPPP'
-#    wsclean_bin: 'wsclean'
-#    makesourcedb_bin: 'makesourcedb'
-#    bbs2model_bin: 'bbs2model'
-#    render_bin: 'render'
+global: # provide executables here
+    singularity_image_path: $HOME/lofar-pipeline.sif # leave empty to not use the singularity image
+    dppp_bin: 'DP3'
+    wsclean_bin: 'wsclean'
+    makesourcedb_bin: 'makesourcedb'
+    bbs2model_bin: 'bbs2model'
+    render_bin: 'render'
 
-####################### IMAGING #######################
+    steps: 'all' # or list, e.g. ['clean1',[]], etc...
 
-split1:
+############################## SPLIT ##########################################
+split:
     startchan: 0 # start channel to split from
     nchan: 0 # 0 means till the end
 
-nvssCal: # DPPP setup for direction independent calibration
+####################### NVSS calibration ######################################
+nvss: False
+    # calibrate against the NVSS catalog. Generally works well
+    # except for cases with and extended Apertif source unresolved by NVSS
+nvssCal:
     solint: 60
     mode: 'phaseonly'
     uvlambdamin: 500 # Ignore baselines / channels with UV < uvlambdamin wavele$
 
-nvss:
-    doit : False
-
+############################## MASK ##########################################
 clean0: # initial clean
     max_over_thresh: 250 # the threshold for initial CLEAN is set to image_max/max_over_thresh
 # TODO add fixed threshold of 100 uJy
 
+############################## SPLIT ##########################################
 clean1: # wsclean setup
     imagesize: 3072
     pixelsize: 3
@@ -111,7 +116,7 @@ clean5:
     pixelsize: 3
     multifreq: 6
     automask: 3.5
-    autothresh: 1.0
+    autothresh: 0.5
     multiscale: True
     clip_model_level: null
     kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3 -weight briggs -1.5'

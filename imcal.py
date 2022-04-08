@@ -42,7 +42,7 @@ def modify_filename(fname, string, ext=None):
     return fbase + string + fext
 
 
-def wsclean(msin, datacolumn='DATA', outname=None, pixelsize=3, imagesize=3072, mgain=0.8, multifreq=0, autothresh=0.3,
+def wsclean(msin, wsclean_bin='wsclean', datacolumn='DATA', outname=None, pixelsize=3, imagesize=3072, mgain=0.8, multifreq=0, autothresh=0.3,
             automask=3, niter=1000000, multiscale=False, save_source_list=True,
             clearfiles=True, clip_model_level=None,
             fitsmask=None, kwstring=''):
@@ -361,10 +361,13 @@ def remove_model_components_below_level(model, level=0.0, out=None):
     return out
 
 
-def main(msin, outbase=None, cfgfile='imcal.yml'):
+def main(msin, steps='all', outbase=None, cfgfile='imcal.yml'):
+
     msin = msin.rstrip('/')
     logging.info('Processing {}'.format(msin))
     logging.info('The config file: {}'.format(cfgfile))
+    logging.info('Running steps: {}'.format(args.steps))
+
     with open(cfgfile) as f:
         cfg = yaml.safe_load(f)
 
@@ -413,18 +416,20 @@ def main(msin, outbase=None, cfgfile='imcal.yml'):
         logging.info('The final image exists. Exiting...')
         return 0
 
-    if cfg['nvss']['doit'] :
-#    if (not os.path.exists(ms_split)) and (cfg['split1']['startchan'] or cfg['split1']['nchan']):
-       ms_split = split_ms(msin, msout_path=ms_split, **cfg['split1'])
 
-       print('------------------makesource')
+    if cfg['nvss']:
+       logging.debug('Using NVSS catalog for initial phase calibration')
+       if (not os.path.exists(ms_split)) and (cfg['split']['startchan'] or cfg['split']['nchan']):
+           ms_split = split_ms(msin, msout_path=ms_split, **cfg['split'])
+
        makesourcedb('nvss-model.txt', out=nvssMod)
-       print('-------------nvssCal')
-       dical(ms_split, nvssMod, msout=dical0, h5out=h5_0, **cfg['nvssCal'])
+
+       dical(ms_split, nvssMod, msout=dical0, h5out=h5_0, **cfg['nvss'])
        view_sols(h5_0, outname=msbase+'_sols_dical0')
 
     else :
-       ms_split = split_ms(msin, msout_path=dical0, **cfg['split1'])
+       # if (not os.path.exists(ms_split)) and (cfg['split']['startchan'] or cfg['split']['nchan']):
+       ms_split = split_ms(msin, msout_path=dical0, **cfg['split'])
 
     if not os.path.exists(img0 +'-image.fits') and (not os.path.exists(img0 +'-MFS-image.fits')):
         img_max = get_image_max(dical0)
@@ -533,13 +538,13 @@ if __name__ == "__main__":
     parser.add_argument('-c', '--config', action='store',
                         dest='configfile', help='Config file', type=str)
     parser.add_argument('-o', '--outbase', default=None, help='output prefix', type=str)
+    parser.add_argument('-s', '--steps', default='all', help='steps to run', type=str)
 
     args = parser.parse_args()
     configfile = args.configfile or \
         os.path.join(os.path.dirname(os.path.realpath(__file__)), 'imcal.yml')
-    msin = args.msin
-    logging.info('Using config file: {}'.format(os.path.abspath(configfile)))
-    main(msin, outbase=args.outbase, cfgfile=configfile)
+    # msin = args.msin
+    main(args.msin, outbase=args.outbase, steps=args.steps, cfgfile=configfile)
     extime = Time.now() - t0
     print("Execution time: {:.1f} min".format(extime.to("minute").value))
 
