@@ -262,7 +262,7 @@ RUN python3 -m pip install h5py pandas pyyaml astropy matplotlib scipy shapely b
 # AImCal
 ADD imcal.py /opt/imcal.py
 ADD cluster.py /opt/cluster.py
-ADD imcal.py /opt/nvss_cutout.py
+ADD nvss_cutout.py /opt/nvss_cutout.py
 ADD imcal.yml /opt/imcal.yml
 ADD nvss.csv.zip /opt/nvss.csv.zip
 RUN ln -s /opt/imcal.py /usr/local/bin/imcal.py
