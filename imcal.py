@@ -39,11 +39,9 @@ _POOL_TIME = 300 # SECONDS
 _MAX_TIME = 1 * 3600 # SECONDS
 _MAX_POOL = _MAX_TIME // _POOL_TIME
 
-def execute_binary(binary, args, simg=None):
-    if simg:
-        command = [f'singularity exec {simg} {binary}'] + args
-    else:
-        command = [f'{binary}'] + args
+def execute_binary(binary, args, ):
+    
+    command = [f'{binary}'] + args
     logging.debug('executing %s', ','.join(command))
     dppp_process = subprocess.Popen(command)
     for i in range(_MAX_POOL):
@@ -125,10 +123,11 @@ def modify_filename(fname, string, ext=None):
     return fbase + string + fext
 
 
-def wsclean(msin, wsclean_bin='wsclean', datacolumn='DATA', outname=None, pixelsize=3, imagesize=3072, mgain=0.8, multifreq=0, autothresh=0.3,
+def wsclean(msin, wsclean_bin='wsclean', datacolumn='DATA', outname=None, pixelsize=3, imagesize=3072, mgain=0.8, 
+            multifreq=0, autothresh=0.3,
             automask=3, niter=1000000, multiscale=False, save_source_list=True,
             clearfiles=True, clip_model_level=None,
-            fitsmask=None, simg=None, kwstring=''):
+            fitsmask=None, kwstring=''):
     """
     wsclean
     """
@@ -153,8 +152,6 @@ def wsclean(msin, wsclean_bin='wsclean', datacolumn='DATA', outname=None, pixels
     cmd = f'wsclean -name {outname} -data-column {datacolumn} -size {imagesize} {imagesize} -scale {pixelsize}asec -niter {niter} \
             {kwstring} {msin}'
     cmd = " ".join(cmd.split())
-    if simg:
-        cmd = f'singularity exec {simg} ' + cmd
 
     logging.debug("Running command: %s", cmd)
     subprocess.call(cmd, shell=True)
@@ -181,15 +178,12 @@ def smoothImage(imgfits, psf=30, out=None) :
     return fits_reconvolve_psf(imgfits, Beam(psf*u.arcsec), out=out)
 
 
-def create_mask(imgfits, residfits, clipval, outname='mask.fits', simg=None):
+def create_mask(imgfits, residfits, clipval, outname='mask.fits', ):
     """
     Create mask using Tom's code (e-mail on 1 Jul 2021)
     """
     cmd1 = f'makeNoiseMapFitsLow {imgfits} {residfits} noise.fits noiseMap.fits'
     cmd2 = f'makeMaskFits noiseMap.fits {outname} {clipval}'
-    if simg:
-        cmd1 = f'singularity exec {simg} ' + cmd1
-        cmd2 = f'singularity exec {simg} ' + cmd2
     logging.debug("Running command: %s", cmd1)
     subprocess.call(cmd1, shell=True)
     logging.debug("Running command: %s", cmd2)
@@ -197,7 +191,7 @@ def create_mask(imgfits, residfits, clipval, outname='mask.fits', simg=None):
     return outname
 
 
-def makeNoiseImage(imgfits, residfits, low=False, simg=None) :
+def makeNoiseImage(imgfits, residfits, low=False, ) :
     """
     Create mask using Tom's code (e-mail on 1 Jul 2021)
     """
@@ -205,8 +199,6 @@ def makeNoiseImage(imgfits, residfits, low=False, simg=None) :
       cmd = f'makeNoiseMapFitsLow {imgfits} {residfits} noiseLow.fits noiseMapLow.fits'
     else :
       cmd = f'makeNoiseMapFits {imgfits} {residfits} noise.fits noiseMap.fits'
-    if simg:
-        cmd = f'singularity exec {simg} ' + cmd
       
     logging.debug("Running command: %s", cmd)
     subprocess.call(cmd, shell=True)
@@ -214,26 +206,22 @@ def makeNoiseImage(imgfits, residfits, low=False, simg=None) :
 
 
 def makeCombMask(ima1='noiseMap.fits', ima2='noiseMapLow.fits',
-		 clip1=5, clip2=7, outname='mask.fits', simg=None) :
+		 clip1=5, clip2=7, outname='mask.fits', ) :
     """
     Create mask using Tom's code (e-mail on 1 Jul 2021)
     """
     cmd = f'makeCombMaskFits {ima1} {ima2} {outname} {clip1} {clip2}'
-    if simg:
-        cmd = f'singularity exec {simg} ' + cmd
     
     logging.debug("Running command: %s", cmd)
     subprocess.call(cmd, shell=True)
     return
 
 
-def get_image_ra_dec_min_max(msin, simg=None):
+def get_image_ra_dec_min_max(msin, ):
     """
     Determine image center coords, min and max values for msin
     """
     cmd = f'wsclean -niter 0 -size 3072 3072 -scale 3arcsec -use-wgridder {msin}'
-    if simg:
-        cmd = f'singularity exec {simg} ' + cmd
     subprocess.call(cmd, shell=True)
     data = fits.getdata('wsclean-image.fits')
     header = fits.getheader('wsclean-image.fits')
@@ -241,45 +229,36 @@ def get_image_ra_dec_min_max(msin, simg=None):
     return header['CRVAL1'], header['CRVAL2'], np.nanmin(data), np.nanmax(data)
 
 
-def makesourcedb(modelfile, out=None, simg=None):
+def makesourcedb(modelfile, out=None, ):
     """ Make sourcedb file from a clustered model """
     out = out or os.path.splitext(modelfile)[0] + '.sourcedb'
     cmd = 'makesourcedb in={} out={}'.format(modelfile, out)
-    if simg:
-        cmd = f'singularity exec {simg} ' + cmd
     logging.debug("Running command: %s", cmd)
     subprocess.call(cmd, shell=True)
     return out
 
 
-def bbs2model(inp, out=None, simg=None):
+def bbs2model(inp, out=None, ):
     """ Convert model file to AO format """
     out = out or os.path.splitext(inp)[0] + '.ao'
     cmd = 'bbs2model {} {}'.format(inp, out)
-    if simg:
-        cmd = f'singularity exec {simg} ' + cmd
     logging.debug("Running command: %s", cmd)
     subprocess.call(cmd, shell=True)
     return out
 
 
-def render(bkgr, model, out=None, simg=None):
+def render(bkgr, model, out=None, ):
     out = out or os.path.split(bkgr)[0] + '/restored.fits'
     cmd = 'render -a -r -t {} -o {} {}'.format(bkgr, out, model)
-    if simg:
-        cmd = f'singularity exec {simg} ' + cmd
     logging.debug("Running command: %s", cmd)
     subprocess.call(cmd, shell=True)
     return out
 
 
         
-def execute_dppp(args, simg=None):
-    if simg:
-        command = ['singularity', 'exec', f'{simg}', 'DP3'] + args
-    else:
-        command = ['DP3'] + args
-
+def execute_dppp(args, ):
+    
+    command = ['DP3'] + args
     logging.debug('executing %s', ','.join(command))
     dppp_process = subprocess.Popen(command)
     for i in range(_MAX_POOL):
@@ -300,7 +279,7 @@ def check_return_code(return_code):
         pass
 
 
-def split_ms(msin_path, startchan, nchan=0, msout_path='', simg=None):
+def split_ms(msin_path, startchan, nchan=0, msout_path='', ):
     """
     use casacore.tables.msutil.msconcat() to concat the new MS files
     """
@@ -313,14 +292,14 @@ def split_ms(msin_path, startchan, nchan=0, msout_path='', simg=None):
                     f'msin.startchan={startchan}',
                     f'msin.nchan={nchan}',
                     f'msout={msout_path}']
-    return_code = execute_dppp(command_args, simg=simg)
+    return_code = execute_dppp(command_args)
     logging.debug('Split of %s returned status code %s', msin_path, return_code)
     check_return_code(return_code)
     return msout_path
 
 
 def dical(msin, srcdb, msout=None, h5out=None, solint=1, startchan=0, split_nchan=0,
-          mode='phaseonly', cal_nchan=0, uvlambdamin=500, simg=None):
+          mode='phaseonly', cal_nchan=0, uvlambdamin=500, ):
     """ direction independent calibration with DPPP """
     h5out = h5out or modify_filename(msin, f'_dical_dt{solint}_{mode}', ext='.h5')
     msout = msout or modify_filename(msin, f'_dical_dt{solint}_{mode}')
@@ -338,14 +317,14 @@ def dical(msin, srcdb, msout=None, h5out=None, solint=1, startchan=0, split_ncha
     if startchan or split_nchan:
         logging.info('Calibrating MS channels: %d - %d', startchan, split_nchan)
         command_args += [f'msin.startchan={startchan}', f'msin.nchan={split_nchan}']
-    return_code = execute_dppp(command_args, simg=simg)
+    return_code = execute_dppp(command_args)
     logging.debug('DICAL returned status code %s', return_code)
     check_return_code(return_code)
     return msout
 
 
 def ddecal(msin, srcdb, msout=None, h5out=None, solint=120, nfreq=30,
-           startchan=0, nchan=0,  mode='diagonal', uvlambdamin=500, subtract=True, simg=None):
+           startchan=0, nchan=0,  mode='diagonal', uvlambdamin=500, subtract=True, ):
     """ Perform direction dependent calibration with DPPP """
     h5out = h5out or os.path.split(msin)[0] + '/ddcal.h5'
     msbase = os.path.basename(msin).split('.')[0]
@@ -368,22 +347,17 @@ def ddecal(msin, srcdb, msout=None, h5out=None, solint=120, nfreq=30,
           '.format(msin=msin, msout=msout, startchan=startchan, nchan=nchan, mode=mode,
             srcdb=srcdb, solint=solint, h5out=h5out, subtract=subtract, nfreq=nfreq,
             uvlambdamin=uvlambdamin)
-    if simg:
-        cmd = f'singularity exec {simg} ' + cmd
     cmd = " ".join(cmd.split())
     logging.debug("Running command: %s", cmd)
     subprocess.call(cmd, shell=True)
     return msout, h5out
 
 
-def phase_shift(msin, new_center, msout=None, simg=None):
+def phase_shift(msin, new_center, msout=None, ):
     """ new_center examples: [12h31m34.5, 52d14m07.34] or [187.5deg, 52.45deg] """
     msout = msout or '.'
     cmd = "DP3 msin={msin} msout={msout} msout.overwrite=True steps=[phaseshift] \
            phaseshift.phasecenter={new_center}".format(**locals())
-    if simg:
-        cmd = f'singularity exec {simg} ' + cmd
-
     cmd = " ".join(cmd.split())
     subprocess.call(cmd, shell=True)
 
@@ -490,7 +464,7 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
 
     with open(cfgfile) as f:
         cfg = yaml.safe_load(f)
-    simg = cfg['global']['singularity_image_path']
+
     
     if steps == 'all':
         steps = ['nvss', 'mask', 'dical', 'ddcal']
@@ -553,7 +527,7 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
        if (not os.path.exists(ms_split)) and (cfg['split']['startchan'] or cfg['split']['nchan']):
            ms_split = split_ms(msin, msout_path=ms_split, **cfg['split'])
 
-       makesourcedb(nvss_model, out=nvssMod, simg=simg)
+       makesourcedb(nvss_model, out=nvssMod)
 
        dical(ms_split, nvssMod, msout=dical0, h5out=h5_0, **cfg['nvsscal'])
        view_sols(h5_0, outname=msbase+'_sols_dical0')
