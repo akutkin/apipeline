@@ -1,15 +1,7 @@
-#:===========================================================================
+#===========================================================================
 # Settings for imcal
-#:===========================================================================
-global: # provide executables here
-    singularity_image_path: $HOME/lofar-pipeline.sif # leave empty to not use the singularity image
-    dppp_bin: 'DP3'
-    wsclean_bin: 'wsclean'
-    makesourcedb_bin: 'makesourcedb'
-    bbs2model_bin: 'bbs2model'
-    render_bin: 'render'
-
-    steps: 'all' # or list, e.g. ['clean1',[]], etc...
+#===========================================================================
+# global: # provide executables here
 
 ############################## SPLIT ##########################################
 split:
@@ -20,7 +12,8 @@ split:
 nvss: False
     # calibrate against the NVSS catalog. Generally works well
     # except for cases with and extended Apertif source unresolved by NVSS
-nvssCal:
+nvsscal:
+    clip_model: 0.001 # Clip NVSS model to not to have sources weaker (Jy)
     solint: 60
     mode: 'phaseonly'
     uvlambdamin: 500 # Ignore baselines / channels with UV < uvlambdamin wavele$
@@ -120,6 +113,18 @@ clean5:
     multiscale: True
     clip_model_level: null
     kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3 -weight briggs -1.5'
+
+
+# clean6:
+#     imagesize: 3072
+#     pixelsize: 3
+#     multifreq: 6
+#     automask: 3.5
+#     autothresh: 0.5
+#     multiscale: True
+#     clip_model_level: null
+#     kwstring: '-facet-regions ddfacets.reg -apply-facet-solutions ddsols.h5 amplitude000,phase000 -use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3 -weight briggs -1.5'
+
 
 ### END
 

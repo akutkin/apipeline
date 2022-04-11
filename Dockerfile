@@ -252,7 +252,7 @@ RUN wget -q -O /WSRT_Measures.ztar \
     rm /WSRT_Measures.ztar
 
 # Some python stuff
-RUN python3 -m pip install h5py pandas pyyaml astropy matplotlib scipy 
+RUN python3 -m pip install h5py pandas pyyaml astropy matplotlib scipy shapely bdsf 
 #    cd /src && \
 #   git clone https://github.com/lofar-astron/PyBDSF.git && \
 #  cd /src/PyBDSF && \
@@ -262,7 +262,9 @@ RUN python3 -m pip install h5py pandas pyyaml astropy matplotlib scipy
 # AImCal
 ADD imcal.py /opt/imcal.py
 ADD cluster.py /opt/cluster.py
+ADD imcal.py /opt/nvss_cutout.py
 ADD imcal.yml /opt/imcal.yml
+ADD nvss.csv.zip /opt/nvss.csv.zip
 RUN ln -s /opt/imcal.py /usr/local/bin/imcal.py
 
 
