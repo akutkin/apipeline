@@ -115,7 +115,7 @@ RUN git clone --depth 1 --branch ${DP3_VERSION} \
     make install -j`nproc`
 
 ARG WSCLEAN_VERSION=master
-RUN git clone --depth 1 --branch ${WSCLEAN_VERSION} \
+RUN git clone --branch ${WSCLEAN_VERSION} \
         https://gitlab.com/aroffringa/wsclean.git && \
     cd wsclean && \
     git reset --hard v3.0 && \
