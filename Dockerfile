@@ -251,7 +251,7 @@ RUN wget -q -O /WSRT_Measures.ztar \
     rm /WSRT_Measures.ztar
 
 # Some python stuff
-RUN python3 -m pip install h5py pandas pyyaml astropy matplotlib scipy shapely bdsf ipython
+RUN python3 -m pip install h5py pandas pyyaml astropy matplotlib scipy shapely bdsf ipython radio_beam scikit-learn
 #    cd /src && \
 #   git clone https://github.com/lofar-astron/PyBDSF.git && \
 #  cd /src/PyBDSF && \

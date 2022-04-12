@@ -9,7 +9,7 @@ import sys
 import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
-from matplotlib.patches import Circle
+# from matplotlib.patches import Circle
 import numpy as np
 import subprocess
 from subprocess import Popen as Process, TimeoutExpired, PIPE
@@ -21,8 +21,8 @@ import logging
 import yaml
 import argparse
 
-from astropy.coordinates import SkyCoord
-from astropy.time import Time
+# from astropy.coordinates import SkyCoord
+# from astropy.time import Time
 import astropy.units as u
 from astropy.io import fits
 
@@ -666,7 +666,7 @@ if __name__ == "__main__":
     logging.info('Starting logger for {}'.format(__name__))
     logger = logging.getLogger(__name__)
 
-    t0 = Time.now()
+    # t0 = Time.now()
     parser = argparse.ArgumentParser(description='DDCal Inputs')
     parser.add_argument('msin', help='MS file to process')
     parser.add_argument('-c', '--config', action='store',
@@ -680,6 +680,6 @@ if __name__ == "__main__":
         os.path.join(os.path.dirname(os.path.realpath(__file__)), 'imcal.yml')
     # msin = args.msin
     main(args.msin, outbase=args.outbase, steps=args.steps, cfgfile=configfile)
-    extime = Time.now() - t0
-    print("Execution time: {:.1f} min".format(extime.to("minute").value))
+    # extime = Time.now() - t0
+    # print("Execution time: {:.1f} min".format(extime.to("minute").value))
 
