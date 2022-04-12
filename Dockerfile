@@ -117,6 +117,9 @@ RUN git clone --depth 1 --branch ${DP3_VERSION} \
 ARG WSCLEAN_VERSION=master
 RUN git clone --depth 1 --branch ${WSCLEAN_VERSION} \
         https://gitlab.com/aroffringa/wsclean.git && \
+    cd wsclean && \
+    git reset --hard v3.0 && \
+    cd .. && \
     mkdir wsclean/build && \
     cd wsclean/build && \
     cmake .. -DPORTABLE=${PORTABLE} && \

@@ -217,15 +217,15 @@ def makeCombMask(ima1='noiseMap.fits', ima2='noiseMapLow.fits',
     return
 
 
-def get_image_ra_dec_min_max(msin, ):
+def get_image_ra_dec_min_max(msin):
     """
     Determine image center coords, min and max values for msin
     """
     cmd = f'wsclean -niter 0 -size 3072 3072 -scale 3arcsec -use-wgridder {msin}'
+    logging.debug('Running command: %s', cmd)
     subprocess.call(cmd, shell=True)
     data = fits.getdata('wsclean-image.fits')
     header = fits.getheader('wsclean-image.fits')
-    
     return header['CRVAL1'], header['CRVAL2'], np.nanmin(data), np.nanmax(data)
 
 
