@@ -38,6 +38,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         python3-casacore \
         python3-numpy \
         wcslib-dev \
+        tmux \
         wget && \
     mkdir -p /src
 
