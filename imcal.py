@@ -520,7 +520,7 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
         return 0
 
 # get image parameters
-    img_ra, img_dec, img_min, img_max = get_image_ra_dec_min_max(dical0, )
+    img_ra, img_dec, img_min, img_max = get_image_ra_dec_min_max(msin)
     
     if 'nvss' in steps and cfg['nvss']:
        nvss_model = nvss_cutout('wsclean-image.fits', nvsscat='/opt/nvss.csv.zip', clip=cfg['nvsscal']['clip_model'])
