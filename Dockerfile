@@ -185,6 +185,7 @@ FROM ubuntu:20.04 as runner
 RUN mkdir /src
 COPY --from=builder /usr/local /usr/local
 RUN chmod +rx /usr/local/bin/*
+COPY --from=builder /src/wsclean /opt/
 
 SHELL ["/bin/bash", "-c"]
 

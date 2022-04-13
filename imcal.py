@@ -540,7 +540,7 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
             logging.info('mask step: Image exists, use --f to overwrite...')
         else:
             threshold = img_max/cfg['clean0']['max_over_thresh']
-            threshold = max(threshold, 0.001)
+            threshold = max(threshold, 0.0001)
             wsclean(dical0, outname=img0, automask=None, save_source_list=False, multifreq=False, mgain=None,
                     kwstring=f'-threshold {threshold}')
             create_mask(img0 +'-image.fits', img0 +'-residual.fits', clipval=10, outname=mask0, )
