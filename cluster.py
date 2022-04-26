@@ -605,20 +605,11 @@ def voronoi_clustering(fig, ax, df, wcs, resid_data, nbright, nclusters,
 
     # logging.info('Checking {} brightest model components'.format(nbright))
 
-    bright_df = df.sort_values('I')[::-1][:nbright][['ra', 'dec', 'I']]
-    # csnrs = []
-    # cfluxes = []
-    # cmeasures = [] # the main value to clusterize by
-    # cellipse_params = []
-
-    # fmin, fmax = min(a.I), max(a.I)
-    rms = mad(resid_data)
-    # resid_mean = np.mean(resid_data)
-
+    bright_df = df.sort_values('I')[::-1][['ra', 'dec', 'I']]
+    # rms = mad(resid_data)
     logging.info('Getting measures for the potential clusters...')
     clusters = []
     clusters_centers = [] #
-
 
     for ra, dec, flux in bright_df.values:
         c = SkyCoord(ra, dec, unit='deg')
@@ -627,20 +618,18 @@ def voronoi_clustering(fig, ax, df, wcs, resid_data, nbright, nclusters,
         if (abs(px-resid_data.shape[1]) < boxsize) or (abs(py-resid_data.shape[0]) < boxsize):
             # logging.debug('Skipping the edge source')
             continue
-# Check if the component already in a cluster
+# Check if the component is nearby
         if clusters and any([c.separation(_).arcmin<same_source_radius for _ in clusters]):
             continue
 
         small_resid = resid_data[py-boxsize:py+boxsize, px-boxsize:px+boxsize]
         ellipse_mean, ecc, amaj, numpix = ellipses_coh(small_resid, amin=20, amax=boxsize-1, dr=1.0)
 
-        if abs(ellipse_mean/rms) > 1.4:
-             # rect = plt.Rectangle((px-boxsize, py-boxsize), 2*boxsize, 2*boxsize,
-             #                      lw=1, color='k', fc='none', alpha=0.3)
-             # ax.add_artist(rect)
-             clusters_centers.append([ra, dec])
-             clusters.append(c)
-             print(ra, dec)
+# Uncomment the condition to search for artifacts:
+        # if abs(ellipse_mean/rms) > 1.4:
+        clusters_centers.append([ra, dec])
+        clusters.append(c)
+        print(ra, dec)
 
         if (isinstance(nclusters, int)) and (len(clusters_centers) >= nclusters):
             logging.debug('Max cluster number reached. Breaking...')
@@ -649,12 +638,6 @@ def voronoi_clustering(fig, ax, df, wcs, resid_data, nbright, nclusters,
     if isinstance(nclusters, int) and len(clusters_centers) < nclusters:
         logging.warning('Decreasing number of clusters')
         nclusters = len(clusters_centers)
-
-    # X = np.vstack([df.ra, df.dec]).T
-    # kmeans = KMeans(n_clusters=nclusters, init=clusters_centers, n_init=1, random_state=0, max_iter=1)
-    # kmeans.fit(X)
-    # y_kmeans = kmeans.predict(X) # cluster index for each observation
-    # ax.scatter(clusters_centers[:, 0], clusters_centers[:, 1], c='black', s=100, alpha=0.5, transform=ax.get_transform("world"))
 
     vor = Voronoi(np.array(clusters_centers))
     voronoi_plot_2d_world(vor, ax=ax, show_vertices=False)
@@ -865,22 +848,22 @@ def write_ds9(fname, h5, image, points=None):
     xmax = imheader['NAXIS1']
     ymin = 0
     ymax = imheader['NAXIS2']
- 
+
     # To cut the Voronoi tessellation on the bounding box, we need
     # a "circumscribing circle"
     dist_pix = np.sqrt((xmax - xmin) ** 2 + (ymax - ymin) ** 2)
-    
-    
+
+
     # load in the directions from the H5
     sourcedir = read_dir_fromh5(h5)
-    
+
     # make ra and dec arrays and coordinates c
     ralist = sourcedir[:, 0]
     declist = sourcedir[:, 1]
     c = SkyCoord(ra=ralist * u.rad, dec=declist * u.rad)
-    
+
     # convert from ra,dec to x,y pixel
-    x, y = w.wcs_world2pix(c.ra.degree, c.dec.degree, 1)    
+    x, y = w.wcs_world2pix(c.ra.degree, c.dec.degree, 1)
 
     bbox = Polygon([(xmin, ymin), (xmax, ymin), (xmax, ymax), (xmin, ymax)])
     polygons, points = tessellate(x, y, w, dist_pix, bbox, plot_tessellation=False)

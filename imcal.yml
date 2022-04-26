@@ -23,7 +23,14 @@ clean0: # initial clean
     max_over_thresh: 250 # the threshold for initial CLEAN is set to image_max/max_over_thresh
 # TODO add fixed threshold of 100 uJy
 
-############################## SPLIT ##########################################
+############################## PREFLAG ##########################################
+
+preflag: # See DP3 steps.preflag
+    baseline: # e.g. '[[RTB,*]]'
+    reltime: # e.g. '10:20+-20m'
+    chan: # null
+    blmin: # in meters
+
 clean1: # wsclean setup
     imagesize: 3072
     pixelsize: 3
@@ -86,7 +93,7 @@ clean4:
 
 ####################### CLUSTERING #######################
 cluster:
-    nbright: 80 # number of brightest clean components (CC) to check for artefacts
+    nbright: 100 # number of brightest clean components (CC) to check for artefacts
     boxsize: 250 # the boxsize around CC in pixels where to check for artefacts
     nclusters: 10 # number of clusters ('auto' -- to set automatically)
 # the following is only for 'auto' and 'manual' mathods:
@@ -114,16 +121,16 @@ clean5:
     clip_model_level: null
     kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3 -weight briggs -1.5'
 
-
-# clean6:
-#     imagesize: 3072
-#     pixelsize: 3
-#     multifreq: 6
-#     automask: 3.5
-#     autothresh: 0.5
-#     multiscale: True
-#     clip_model_level: null
-#     kwstring: '-facet-regions ddfacets.reg -apply-facet-solutions ddsols.h5 amplitude000,phase000 -use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3 -weight briggs -1.5'
+### test for facet clean
+facet_clean:
+    imagesize: 3072
+    pixelsize: 3
+    multifreq: 6
+    automask: 3.5
+    autothresh: 0.5
+    multiscale: True
+    clip_model_level: null
+    kwstring: '-facet-regions ddfacets.reg -apply-facet-solutions ddsols.h5 amplitude000,phase000 -use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3 -weight briggs -1.5'
 
 
 ### END

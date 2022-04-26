@@ -40,7 +40,6 @@ _MAX_TIME = 1 * 3600 # SECONDS
 _MAX_POOL = _MAX_TIME // _POOL_TIME
 
 def execute_binary(binary, args, ):
-    
     command = [f'{binary}'] + args
     logging.debug('executing %s', ','.join(command))
     dppp_process = subprocess.Popen(command)
@@ -51,7 +50,7 @@ def execute_binary(binary, args, ):
             return return_code
         except TimeoutExpired as e:
             logging.debug('DPPP process %s still running', dppp_process.pid)
-            continue 
+            continue
 
 
 def fft_psf(bmaj, bmin, bpa, size=3073):
@@ -64,6 +63,7 @@ def fft_psf(bmaj, bmin, bpa, size=3073):
     fkern.normalize('peak')
     fkern = fkern.array
     return fkern
+
 
 def reconvolve_gaussian_kernel(img, old_maj, old_min, old_pa, new_maj, new_min, new_pa):
     """
@@ -123,7 +123,7 @@ def modify_filename(fname, string, ext=None):
     return fbase + string + fext
 
 
-def wsclean(msin, wsclean_bin='wsclean', datacolumn='DATA', outname=None, pixelsize=3, imagesize=3072, mgain=0.8, 
+def wsclean(msin, wsclean_bin='wsclean', datacolumn='DATA', outname=None, pixelsize=3, imagesize=3072, mgain=0.8,
             multifreq=0, autothresh=0.3,
             automask=3, niter=1000000, multiscale=False, save_source_list=True,
             clearfiles=True, clip_model_level=None,
@@ -178,12 +178,13 @@ def smoothImage(imgfits, psf=30, out=None) :
     return fits_reconvolve_psf(imgfits, Beam(psf*u.arcsec), out=out)
 
 
-def create_mask(imgfits, residfits, clipval, outname='mask.fits', ):
+def create_mask(imgfits, residfits, clipval, outname='mask.fits'):
     """
     Create mask using Tom's code (e-mail on 1 Jul 2021)
     """
-    cmd1 = f'makeNoiseMapFitsLow {imgfits} {residfits} noise.fits noiseMap.fits'
-    cmd2 = f'makeMaskFits noiseMap.fits {outname} {clipval}'
+    outbase = os.path.splitext(imgfits)[0]
+    cmd1 = f'makeNoiseMapFitsLow {imgfits} {residfits} {outbase}_noise.fits {outbase}_noiseMap.fits'
+    cmd2 = f'makeMaskFits {outbase}_noiseMap.fits {outname} {clipval}'
     logging.debug("Running command: %s", cmd1)
     subprocess.call(cmd1, shell=True)
     logging.debug("Running command: %s", cmd2)
@@ -191,42 +192,50 @@ def create_mask(imgfits, residfits, clipval, outname='mask.fits', ):
     return outname
 
 
-def makeNoiseImage(imgfits, residfits, low=False, ) :
+def makeNoiseImage(imgfits, residfits, low=False) :
     """
     Create mask using Tom's code (e-mail on 1 Jul 2021)
     """
+    # if outbase is None:
+    outbase = os.path.splitext(imgfits)[0]
     if low:
-      cmd = f'makeNoiseMapFitsLow {imgfits} {residfits} noiseLow.fits noiseMapLow.fits'
+        img1, img2 = f'{outbase}_noiseLow.fits', f'{outbase}_noiseMapLow.fits'
+        cmd = f'makeNoiseMapFitsLow {imgfits} {residfits} {img1} {img2}'
     else :
-      cmd = f'makeNoiseMapFits {imgfits} {residfits} noise.fits noiseMap.fits'
-      
+        img1, img2 = f'{outbase}_noise.fits', f'{outbase}_noiseMap.fits'
+        cmd = f'makeNoiseMapFits {imgfits} {residfits} {img1} {img2}'
     logging.debug("Running command: %s", cmd)
     subprocess.call(cmd, shell=True)
-    return
+    return img2
 
 
-def makeCombMask(ima1='noiseMap.fits', ima2='noiseMapLow.fits',
-		 clip1=5, clip2=7, outname='mask.fits', ) :
+def makeCombMask(img1, img2, clip1=5, clip2=7, outname=None) :
     """
     Create mask using Tom's code (e-mail on 1 Jul 2021)
     """
-    cmd = f'makeCombMaskFits {ima1} {ima2} {outname} {clip1} {clip2}'
-    
+    if outname is None:
+        outname = os.path.splitext(img1)[0] + '_mask.fits'
+    cmd = f'makeCombMaskFits {img1} {img2} {outname} {clip1} {clip2}'
     logging.debug("Running command: %s", cmd)
     subprocess.call(cmd, shell=True)
-    return
+    return outname
 
 
 def get_image_ra_dec_min_max(msin):
     """
     Determine image center coords, min and max values for msin
     """
-    cmd = f'wsclean -niter 0 -size 3072 3072 -scale 3arcsec -use-wgridder {msin}'
-    logging.debug('Running command: %s', cmd)
-    subprocess.call(cmd, shell=True)
-    data = fits.getdata('wsclean-image.fits')
-    header = fits.getheader('wsclean-image.fits')
-    return header['CRVAL1'], header['CRVAL2'], np.nanmin(data), np.nanmax(data)
+    outbase = os.path.splitext(msin.rstrip('/'))[0]+'-wsclean'
+    outname = outbase+'-image.fits'
+    cmd = f'wsclean -name {outbase} -niter 0 -size 3072 3072 -scale 3arcsec -use-wgridder {msin}'
+    if os.path.exists(outname):
+        logging.debug('Image exists. Skipping cleaning...')
+    else:
+        logging.debug('Running command: %s', cmd)
+        subprocess.call(cmd, shell=True)
+    data = fits.getdata(outname)
+    header = fits.getheader(outname)
+    return outname, header['CRVAL1'], header['CRVAL2'], np.nanmin(data), np.nanmax(data)
 
 
 def makesourcedb(modelfile, out=None, ):
@@ -255,9 +264,7 @@ def render(bkgr, model, out=None, ):
     return out
 
 
-        
 def execute_dppp(args, ):
-    
     command = ['DP3'] + args
     logging.debug('executing %s', ','.join(command))
     dppp_process = subprocess.Popen(command)
@@ -296,6 +303,25 @@ def split_ms(msin_path, startchan, nchan=0, msout_path='', ):
     logging.debug('Split of %s returned status code %s', msin_path, return_code)
     check_return_code(return_code)
     return msout_path
+
+
+def preflag(msin, msout=None, **kwargs):
+    """
+    preflag data using DP3 preflag module
+    """
+    if not any(kwargs.values()):
+        logging.debug('No preflag options specified. Skipping...')
+        return msin
+    msout = msout or '.'
+    command_args = ['steps=[preflag]',
+                    f'msin={msin}',
+                    f'msout={msout}'] + ['preflag.'+'='.join(_) for _ in kwargs.items() if _[1] is not None]
+    logging.info('Flagging data (%s)', command_args)
+    return_code = execute_dppp(command_args)
+    logging.debug('Preflag of %s returned status code %s', msin, return_code)
+    check_return_code(return_code)
+    if msout == '.': msout = msin
+    return msout
 
 
 def dical(msin, srcdb, msout=None, h5out=None, solint=1, startchan=0, split_nchan=0,
@@ -426,7 +452,7 @@ def view_sols(h5param, outname=None):
             fig2 = ax2 = None
             logging.error('No phase solutions found')
     # return fig1, ax1, fig2, ax2
-    
+
 
 def remove_model_components_below_level(model, level=0.0, out=None):
     """
@@ -465,9 +491,9 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
     with open(cfgfile) as f:
         cfg = yaml.safe_load(f)
 
-    
+
     if steps == 'all':
-        steps = ['nvss', 'mask', 'dical', 'ddcal']
+        steps = ['nvss', 'preflag', 'mask', 'dical', 'ddcal']
     else:
         steps = steps.split(',')
 
@@ -480,6 +506,7 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
 
     ms_split = msbase + '_splt.MS'
 
+
     img0 = outbase + '_0'
     img1 = outbase + '_1'
     img2 = outbase + '_2'
@@ -487,8 +514,8 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
     img_dical = outbase + '-dical'
     img_ddsub_1 = outbase + '-ddsub-1'
     img_ddsub_2 = outbase + '-ddsub-2'
-    img_ddcal_1 = outbase + '-ddcal'
-    img_ddcal_2 = outbase + '-ddcal'
+    img_ddcal_1 = outbase + '-ddcal-1'
+    img_ddcal_2 = outbase + '-ddcal-2'
 
     mask0 = outbase + '-mask0.fits'
     mask1 = outbase + '-mask1.fits'
@@ -514,16 +541,21 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
     h5_dd = outbase + '_ddcal.h5'
 
 
-    
+
     if not force and os.path.exists(img_ddcal_2+'-image.fits'):
         logging.info('The final image exists. Exiting...')
         return 0
 
 # get image parameters
-    img_ra, img_dec, img_min, img_max = get_image_ra_dec_min_max(msin)
-    
+    # if 'init' in steps:
+    # if not force and os.path.exists(outbase+'-wsclean-image.fits'):
+    initial_img, img_ra, img_dec, img_min, img_max = get_image_ra_dec_min_max(msin)
+    logging.info('Image: %s', initial_img)
+    logging.info('Image RA, DEC: %s, %s', img_ra, img_dec)
+    logging.info('Image Min, Max: %s, %s', img_min, img_max)
+
     if 'nvss' in steps and cfg['nvss']:
-       nvss_model = nvss_cutout('wsclean-image.fits', nvsscat='/opt/nvss.csv.zip', clip=cfg['nvsscal']['clip_model'])
+       nvss_model = nvss_cutout(initial_img, nvsscat='/opt/nvss.csv.zip', clip=cfg['nvsscal']['clip_model'])
        if (not os.path.exists(ms_split)) and (cfg['split']['startchan'] or cfg['split']['nchan']):
            ms_split = split_ms(msin, msout_path=ms_split, **cfg['split'])
 
@@ -532,8 +564,13 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
        dical(ms_split, nvssMod, msout=dical0, h5out=h5_0, **cfg['nvsscal'])
        view_sols(h5_0, outname=msbase+'_sols_dical0')
     else :
-       # if (not os.path.exists(ms_split)) and (cfg['split']['startchan'] or cfg['split']['nchan']):
-       ms_split = split_ms(msin, msout_path=dical0, **cfg['split'])
+       if (not os.path.exists(ms_split)) and (cfg['split']['startchan'] or cfg['split']['nchan']):
+           dical0 = split_ms(msin, msout_path=dical0, **cfg['split'])
+       else:
+           dical0 = msin
+
+    if 'preflag' in steps:
+        dical0 = preflag(ms_split, msout=dical0, **cfg['preflag'])
 
     if 'mask' in steps:
         if not force and (os.path.exists(img0 +'-image.fits') or (os.path.exists(img0 +'-MFS-image.fits'))):
@@ -544,7 +581,7 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
             wsclean(dical0, outname=img0, automask=None, save_source_list=False, multifreq=False, mgain=None,
                     kwstring=f'-threshold {threshold}')
             create_mask(img0 +'-image.fits', img0 +'-residual.fits', clipval=10, outname=mask0, )
-    
+
     if 'dical' in steps:
 # clean1
         if not force and (os.path.exists(img1 +'-image.fits') or (os.path.exists(img1 +'-MFS-image.fits'))):
@@ -552,7 +589,7 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
         else:
             wsclean(dical0, fitsmask=mask0, outname=img1, **cfg['clean1']) # fast shallow clean
             makesourcedb(img1+'-sources.txt', out=model1)
-    
+
 # dical1
         if not force and os.path.exists(dical1):
             logging.debug('dical/dical1 step: MS exists, , use --f to overwrite...')
@@ -565,10 +602,10 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
         else:
             wsclean(dical1, fitsmask=mask0, outname=img2, **cfg['clean2'])
             smoothImage(img2+'-residual.fits')
-            makeNoiseImage(img2 +'-image.fits', img2 +'-residual.fits', )
-            makeNoiseImage(img2 +'-residual-smooth.fits', img2 +'-residual.fits', low=True, )
-            makeCombMask(outname=mask1, clip1=7, clip2=15, )
-    
+            i1 = makeNoiseImage(img2 +'-image.fits', img2 +'-residual.fits', )
+            i2 = makeNoiseImage(img2 +'-residual-smooth.fits', img2 +'-residual.fits', low=True, )
+            makeCombMask(i1, i2, clip1=7, clip2=15, outname=mask1, )
+
             makesourcedb(img2+'-sources.txt', out=model2, )
 
 # dical2
@@ -583,10 +620,10 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
         else:
             wsclean(dical2, fitsmask=mask1, outname=img3, **cfg['clean3'])
             smoothImage(img3+'-residual.fits')
-            makeNoiseImage(img3 +'-image.fits', img3 +'-residual.fits', )
-            makeNoiseImage(img3 +'-residual-smooth.fits', img3 +'-residual.fits', low=True, )
-            makeCombMask(outname=mask2, clip1=5, clip2=10)
-    
+            i1 = makeNoiseImage(img3 +'-image.fits', img3 +'-residual.fits', )
+            i2 = makeNoiseImage(img3 +'-residual-smooth.fits', img3 +'-residual.fits', low=True, )
+            makeCombMask(i1, i2, clip1=5, clip2=10, outname=mask2,)
+
             makesourcedb(img3+'-sources.txt', out=model3)
 
 # dical3
@@ -602,9 +639,9 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
         else:
             wsclean(dical3, fitsmask=mask2, outname=img_dical,  **cfg['clean4'])
             smoothImage(img_dical+'-residual.fits')
-            makeNoiseImage(img_dical +'-image.fits', img_dical +'-residual.fits', )
-            makeNoiseImage(img_dical +'-residual-smooth.fits', img_dical +'-residual.fits',low=True, )
-            makeCombMask(outname=mask3, clip1=5, clip2=7, )
+            i1 = makeNoiseImage(img_dical +'-image.fits', img_dical +'-residual.fits', )
+            i2 = makeNoiseImage(img_dical +'-residual-smooth.fits', img_dical +'-residual.fits',low=True, )
+            makeCombMask(i1, i2, clip1=5, clip2=7, outname=mask3)
 
     if 'ddcal' in steps:
 # Cluster
@@ -627,35 +664,36 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
         if not force and os.path.exists(img_ddsub_1+'-image.fits'):
             pass
         else:
-            wsclean(ddsub, fitsmask=mask3,outname=img_ddsub_1, **cfg['clean5'])
+            wsclean(ddsub, fitsmask=mask3, outname=img_ddsub_1, **cfg['clean5'])
 #TAO        wsclean(ddsub,outname=img_ddsub, **cfg['clean5'])
 
         aomodel = bbs2model(img_dical+'-sources.txt', img_dical+'-model.ao', )
-    
+
         render(img_ddsub_1+'-image.fits', aomodel, out=img_ddcal_1+'-image.fits')
-    
-        smoothImage(img_ddsub_1+'-image.fits')
-        makeNoiseImage(img_ddcal_1 +'-image.fits', img_ddsub_1 +'-residual.fits', )
-        makeNoiseImage(img_ddcal_1 +'-image-smooth.fits', img_ddsub_1 +'-residual.fits',low=True, )
-        makeCombMask(outname=mask4, clip1=3.5, clip2=5, )
+
+        smoothImage(img_ddcal_1+'-image.fits')
+        i1 = makeNoiseImage(img_ddcal_1 +'-image.fits', img_ddsub_1 +'-residual.fits', )
+        i2 = makeNoiseImage(img_ddcal_1 +'-image-smooth.fits', img_ddsub_1 +'-residual.fits',low=True, )
+        makeCombMask(i1, i2, clip1=3.5, clip2=5, outname=mask4,)
 
         if not force and os.path.exists(img_ddsub_2+'-image.fits'):
             pass
         else:
             wsclean(ddsub, fitsmask=mask4, outname=img_ddsub_2, **cfg['clean5'])
 #TAO        wsclean(ddsub,outname=img_ddsub, **cfg['clean5'])
-    
+
         aomodel = bbs2model(img_dical+'-sources.txt', img_dical+'-model.ao', )
         render(img_ddsub_2+'-image.fits', aomodel, out=img_ddcal_2+'-image.fits', )
 
 # test facet imaging:
-    # ds9_file = 'ddfacets.reg'
-    # ddvis = outbase + '_ddvis.MS'
-    # h5_ddvis = 'ddsols.h5'
-    # clustered_sdb = img_dical+'-clustered.sourcedb'
-    # # ddvis = ddecal(dical3, clustered_sdb, msout=ddvis, subtract=False, h5out=h5_ddvis, **cfg['ddcal'])
-    # # write_ds9(ds9_file, h5_ddvis, img_ddcal+'-image.fits')
-    # wsclean(ddvis, fitsmask=mask3, save_source_list=False, outname='img-facet', **cfg['clean6'],)
+    if 'facet' in steps:
+        ds9_file = 'ddfacets.reg'
+        ddvis = outbase + '_ddvis.MS'
+        h5_ddvis = 'ddsols.h5'
+        clustered_sdb = img_dical+'-clustered.sourcedb'
+        # ddvis = ddecal(dical3, clustered_sdb, msout=ddvis, subtract=False, h5out=h5_ddvis, **cfg['ddcal'])
+        # write_ds9(ds9_file, h5_ddvis, img_ddcal_2+'-image.fits')
+        wsclean(ddvis, fitsmask=mask3, save_source_list=False, outname='img-facet', **cfg['facet_clean'],)
 
 
     return 0
@@ -673,13 +711,13 @@ if __name__ == "__main__":
                         dest='configfile', help='Config file', type=str)
     parser.add_argument('-o', '--outbase', default=None, help='output prefix', type=str)
     parser.add_argument('-s', '--steps', default='all', help='steps to run. Example: "nvss,mask,dical,ddcal"', type=str)
-    parser.add_argument('-f', '--force', action='store_false', help='Overwrite the existing files')
+    parser.add_argument('-f', '--force', action='store_true', help='Overwrite the existing files')
 
     args = parser.parse_args()
     configfile = args.configfile or \
         os.path.join(os.path.dirname(os.path.realpath(__file__)), 'imcal.yml')
     # msin = args.msin
-    main(args.msin, outbase=args.outbase, steps=args.steps, cfgfile=configfile)
+    main(args.msin, outbase=args.outbase, steps=args.steps, cfgfile=configfile, force=args.force)
     # extime = Time.now() - t0
     # print("Execution time: {:.1f} min".format(extime.to("minute").value))
 
