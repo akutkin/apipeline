@@ -395,6 +395,7 @@ def view_sols(h5param, outname=None):
             grp = f['sol000/{}'.format(key)]
             data = grp['val'][()]
             time = grp['time'][()]
+            timex = (time-time[0])/3600.0
             # ants = ['RT2','RT3','RT4','RT5','RT6','RT7','RT8','RT9','RTA','RTB','RTC','RTD']
             ants = [_.decode() for _ in grp['ant'][()]]
             fig = plt.figure(figsize=[20, 15])
@@ -406,29 +407,24 @@ def view_sols(h5param, outname=None):
                    ax.set_ylim(0,2)
                 else :
                    ax.set_ylim(-180,180)
+                gavg = np.nanmean(data, axis=1)
                 if len(data.shape) == 5: # several directions
                     # a = ax.imshow(data[:,:,i,1,0].T, aspect='auto')
                     # plt.colorbar(a)
-                    gavg = np.nanmean(data, axis=1)
                     if key == 'amplitude000' :
-                      ax.plot((time-time[0])/60.0, gavg[:, i, :, 0], alpha=0.7)
-                      ax.plot((time-time[0])/60.0, gavg[:, i, :, 1], alpha=0.7)
+                        ax.plot(timex, gavg[:, i, :, 0], alpha=0.7)
+                        ax.plot(timex, gavg[:, i, :, 1], alpha=0.7)
                     else :
-                      ax.plot((time-time[0])/60.0, 360.0/np.pi*gavg[:, i, :, 0], alpha=0.7)
-                      ax.plot((time-time[0])/60.0, 360.0/np.pi*gavg[:, i, :, 1], alpha=0.7)
+                        ax.plot(timex, 360.0/np.pi*gavg[:, i, :, 0], alpha=0.7)
+                        ax.plot(timex, 360.0/np.pi*gavg[:, i, :, 1], alpha=0.7)
 
                 elif len(data.shape) == 4: # a single direction
                     if key == 'amplitude000' :
-                      gavg = np.nanmean(data,axis=1)
-#                      ax.plot((time-time[0])/3600.0, data[:, 0, i, 0], alpha=0.7)
-                      ax.plot((time-time[0])/3600.0, gavg[:,  i, 0], alpha=0.7,label='XX')
-                      ax.plot((time-time[0])/3600.0, gavg[:,  i, 0], alpha=0.7,label='YY')
+                        ax.plot(timex, gavg[:,  i, 0], alpha=0.7,label='XX')
+                        ax.plot(timex, gavg[:,  i, 0], alpha=0.7,label='YY')
                     else :
-                      gavg = np.nanmean(data,axis=1)
-#                      ax.plot((time-time[0])/3600.0, 360.0/np.pi*data[:, 0, i, 0], alpha=0.7)
-#                      ax.plot((time-time[0])/3600.0, 360.0/np.pi*data[:,3 , i, 0], alpha=0.7)
-                      ax.plot((time-time[0])/3600.0, 360.0/np.pi*gavg[:,  i, 0], alpha=0.7,label='XX')
-                      ax.plot((time-time[0])/3600.0, 360.0/np.pi*gavg[:,  i, 1], alpha=0.7,label='YY')
+                        ax.plot(timex, 360.0/np.pi*gavg[:,  i, 0], alpha=0.7,label='XX')
+                        ax.plot(timex, 360.0/np.pi*gavg[:,  i, 1], alpha=0.7,label='YY')
 
 
                     if i == 0:
@@ -493,7 +489,7 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
 
 
     if steps == 'all':
-        steps = ['nvss', 'preflag', 'mask', 'dical', 'ddcal']
+        steps = ['split', 'nvss', 'preflag', 'mask', 'dical', 'ddcal']
     else:
         steps = steps.split(',')
 
@@ -554,23 +550,21 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
     logging.info('Image RA, DEC: %s, %s', img_ra, img_dec)
     logging.info('Image Min, Max: %s, %s', img_min, img_max)
 
-    if 'nvss' in steps and cfg['nvss']:
-       nvss_model = nvss_cutout(initial_img, nvsscat='/opt/nvss.csv.zip', clip=cfg['nvsscal']['clip_model'])
-       if (not os.path.exists(ms_split)) and (cfg['split']['startchan'] or cfg['split']['nchan']):
-           ms_split = split_ms(msin, msout_path=ms_split, **cfg['split'])
-
-       makesourcedb(nvss_model, out=nvssMod)
-
-       dical(ms_split, nvssMod, msout=dical0, h5out=h5_0, **cfg['nvsscal'])
-       view_sols(h5_0, outname=msbase+'_sols_dical0')
-    else :
-       if (not os.path.exists(ms_split)) and (cfg['split']['startchan'] or cfg['split']['nchan']):
-           dical0 = split_ms(msin, msout_path=dical0, **cfg['split'])
-       else:
-           dical0 = msin
+    if 'split' in steps and (not os.path.exists(ms_split)) and (cfg['split']['startchan'] or cfg['split']['nchan']):
+        ms_split = split_ms(msin, msout_path=ms_split, **cfg['split'])
+        msin = ms_split
 
     if 'preflag' in steps:
-        dical0 = preflag(ms_split, msout=dical0, **cfg['preflag'])
+        msin = preflag(msin, msout=outbase+'_preflagged.MS', **cfg['preflag'])
+
+    if 'nvss' in steps and cfg['nvss']:
+        nvss_model = nvss_cutout(initial_img, nvsscat='/opt/nvss.csv.zip', clip=cfg['nvsscal']['clip_model'])
+        makesourcedb(nvss_model, out=nvssMod)
+        dical0 = dical(msin, nvssMod, msout=dical0, h5out=h5_0, **cfg['nvsscal'])
+        view_sols(h5_0, outname=msbase+'_sols_dical0')
+    else:
+        dical0 = msin
+
 
     if 'mask' in steps:
         if not force and (os.path.exists(img0 +'-image.fits') or (os.path.exists(img0 +'-MFS-image.fits'))):
