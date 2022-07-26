@@ -131,9 +131,8 @@ def wsclean(msin, wsclean_bin='wsclean', datacolumn='DATA', outname=None, pixels
     """
     wsclean
     """
-    msbase = os.path.splitext(msin)[0]
     if outname is None:
-        outname = msbase
+        outname = os.path.splitext(msin)[0]
     if multiscale:
         kwstring += ' -multiscale'
     if autothresh is not None:
@@ -665,19 +664,20 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
 
         render(img_ddsub_1+'-image.fits', aomodel, out=img_ddcal_1+'-image.fits')
 
-        smoothImage(img_ddcal_1+'-image.fits')
-        i1 = makeNoiseImage(img_ddcal_1 +'-image.fits', img_ddsub_1 +'-residual.fits', )
-        i2 = makeNoiseImage(img_ddcal_1 +'-image-smooth.fits', img_ddsub_1 +'-residual.fits',low=True, )
-        makeCombMask(i1, i2, clip1=3.5, clip2=5, outname=mask4,)
+# This part produces some artifacts. First need to figure out the reason
+#         smoothImage(img_ddcal_1+'-image.fits')
+#         i1 = makeNoiseImage(img_ddcal_1 +'-image.fits', img_ddsub_1 +'-residual.fits', )
+#         i2 = makeNoiseImage(img_ddcal_1 +'-image-smooth.fits', img_ddsub_1 +'-residual.fits',low=True, )
+#         makeCombMask(i1, i2, clip1=3.5, clip2=5, outname=mask4,)
 
-        if not force and os.path.exists(img_ddsub_2+'-image.fits'):
-            pass
-        else:
-            wsclean(ddsub, fitsmask=mask4, outname=img_ddsub_2, **cfg['clean5'])
-#TAO        wsclean(ddsub,outname=img_ddsub, **cfg['clean5'])
+#         if not force and os.path.exists(img_ddsub_2+'-image.fits'):
+#             pass
+#         else:
+#             wsclean(ddsub, fitsmask=mask4, outname=img_ddsub_2, **cfg['clean5'])
+# #TAO        wsclean(ddsub,outname=img_ddsub, **cfg['clean5'])
 
-        aomodel = bbs2model(img_dical+'-sources.txt', img_dical+'-model.ao', )
-        render(img_ddsub_2+'-image.fits', aomodel, out=img_ddcal_2+'-image.fits', )
+#         aomodel = bbs2model(img_dical+'-sources.txt', img_dical+'-model.ao', )
+#         render(img_ddsub_2+'-image.fits', aomodel, out=img_ddcal_2+'-image.fits', )
 
 # test facet imaging:
     if 'facet' in steps:
@@ -685,8 +685,9 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
         ddvis = outbase + '_ddvis.MS'
         h5_ddvis = 'ddsols.h5'
         clustered_sdb = img_dical+'-clustered.sourcedb'
-        # ddvis = ddecal(dical3, clustered_sdb, msout=ddvis, subtract=False, h5out=h5_ddvis, **cfg['ddcal'])
-        # write_ds9(ds9_file, h5_ddvis, img_ddcal_2+'-image.fits')
+        if not os.path.exists(ddvis):
+            ddvis = ddecal(dical3, clustered_sdb, msout=ddvis, subtract=False, h5out=h5_ddvis, **cfg['ddcal'])
+            write_ds9(ds9_file, h5_ddvis, img_ddcal_2+'-image.fits')
         wsclean(ddvis, fitsmask=mask3, save_source_list=False, outname='img-facet', **cfg['facet_clean'],)
 
 
@@ -714,4 +715,3 @@ if __name__ == "__main__":
     main(args.msin, outbase=args.outbase, steps=args.steps, cfgfile=configfile, force=args.force)
     # extime = Time.now() - t0
     # print("Execution time: {:.1f} min".format(extime.to("minute").value))
-
