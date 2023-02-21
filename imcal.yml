@@ -30,6 +30,7 @@ preflag: # See DP3 steps.preflag
     reltime: # e.g. '10:20+-20m'
     chan: # null
     blmin: # in meters
+    freqrange: # [1440 .. 1470 MHz] # freq range to flag
 
 clean1: # wsclean setup
     imagesize: 3072
@@ -139,5 +140,3 @@ facet_clean:
 ## TODO:
 #plotsols:
 #
-
-
