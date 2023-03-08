@@ -9,9 +9,9 @@ split:
     nchan: 0 # 0 means till the end
 
 ####################### NVSS calibration ######################################
+# calibrate against the NVSS catalog. Generally works well
+# except for cases with an extended Apertif source unresolved by NVSS
 nvss: False
-    # calibrate against the NVSS catalog. Generally works well
-    # except for cases with and extended Apertif source unresolved by NVSS
 nvsscal:
     clip_model: 0.001 # Clip NVSS model to not to have sources weaker (Jy)
     solint: 60
@@ -32,7 +32,7 @@ preflag: # See DP3 steps.preflag
     blmin: # in meters
     freqrange: # [1440 .. 1470 MHz] # freq range to flag
 
-clean1: # wsclean setup
+clean1: # wsclean setup (see https://wsclean.readthedocs.io/en/latest/)
     imagesize: 3072
     pixelsize: 3
     multifreq: 0
@@ -100,7 +100,8 @@ cluster:
 # the following is only for 'auto' and 'manual' mathods:
     cluster_radius: 5 # arcmin
     cluster_overlap: 1.6 # if lower than 2 clusters can intersect
-    clustering_method :  voronoi # or auto
+    clustering_method :  voronoi # can also be auto or manual
+    voronoi_search_artifacts: False # set True to search for artifacts around bright sources
     add_manual: False
 
 ######################## DD CALIBRATION #######################

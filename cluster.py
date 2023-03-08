@@ -598,7 +598,8 @@ def write_df_voronoi(df, vor, output=None):
 
 
 def voronoi_clustering(fig, ax, df, wcs, resid_data, nbright, nclusters,
-                      boxsize=250, same_source_radius=5, central_region=True):
+                      boxsize=250, same_source_radius=5, central_region=True,
+                      search_artifacts=False):
     """
     Use Voronoi clustering instead of fixed radius around sources
     """
@@ -606,7 +607,6 @@ def voronoi_clustering(fig, ax, df, wcs, resid_data, nbright, nclusters,
     # logging.info('Checking {} brightest model components'.format(nbright))
 
     bright_df = df.sort_values('I')[::-1][['ra', 'dec', 'I']]
-    # rms = mad(resid_data)
     logging.info('Getting measures for the potential clusters...')
     clusters = []
     clusters_centers = [] #
@@ -622,13 +622,18 @@ def voronoi_clustering(fig, ax, df, wcs, resid_data, nbright, nclusters,
         if clusters and any([c.separation(_).arcmin<same_source_radius for _ in clusters]):
             continue
 
-        small_resid = resid_data[py-boxsize:py+boxsize, px-boxsize:px+boxsize]
-        ellipse_mean, ecc, amaj, numpix = ellipses_coh(small_resid, amin=20, amax=boxsize-1, dr=1.0)
 
-# Uncomment the condition to search for artifacts:
-        # if abs(ellipse_mean/rms) > 1.4:
-        clusters_centers.append([ra, dec])
-        clusters.append(c)
+# search for artifacts:
+        if search_artifacts:
+            small_resid = resid_data[py-boxsize:py+boxsize, px-boxsize:px+boxsize]
+            ellipse_mean, ecc, amaj, numpix = ellipses_coh(small_resid, amin=20, amax=boxsize-1, dr=1.0)
+            rms = mad(resid_data)
+            if abs(ellipse_mean/rms) > 1.4:
+                clusters_centers.append([ra, dec])
+                clusters.append(c)
+        else:
+            clusters_centers.append([ra, dec])
+            clusters.append(c)
         print(ra, dec)
 
         if (isinstance(nclusters, int)) and (len(clusters_centers) >= nclusters):
@@ -898,7 +903,7 @@ def write_ds9(fname, h5, image, points=None):
 
 
 def main(img, resid, model, clustering_method='Voronoi', add_manual=False, nclusters=10, boxsize=250,
-         nbright=80, cluster_radius=5, cluster_overlap=1.6):
+         nbright=80, cluster_radius=5, cluster_overlap=1.6, voronoi_search_artifacts=False):
     """
     clustering
     methods:
@@ -933,7 +938,7 @@ def main(img, resid, model, clustering_method='Voronoi', add_manual=False, nclus
 
     if clustering_method.lower() == 'voronoi':
 
-        vor = voronoi_clustering(fig, ax, df, wcs, resid_data, nbright, nclusters=nclusters)
+        vor = voronoi_clustering(fig, ax, df, wcs, resid_data, nbright, nclusters=nclusters, search_artifacts=voronoi_search_artifacts)
         write_df_voronoi(df, vor, output=output)
 
     elif clustering_method.lower() == 'auto':
@@ -955,15 +960,4 @@ def main(img, resid, model, clustering_method='Voronoi', add_manual=False, nclus
 
 ### if __name__ == "__main__":
 if __name__ == "__main__":
-
-    base = '/kutkin/apipeline/to_validate/210109001_06-dical-'
-    img = base + 'image.fits'
-    resid = base + 'residual.fits'
-    model = base + 'sources.txt'
-    h5 = ''
-    # img = sys.argv[1]
-    # resid = sys.argv[2]
-    # model = sys.argv[3]
-
     main(img, resid, model, clustering_method='Voronoi', nclusters=6)
-
