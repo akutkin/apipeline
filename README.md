@@ -1,5 +1,5 @@
 ## apipeline
-Direction-dependent calibration for Apertif. The pipeline is based on the LOFAR Default Preprocessing Pipeline (DPPP/DP3 van Diepen et al. 2018) and the wsclean imaging package (Offringa et al. 2014). It is recommended to use Docker container with the LOFAR tools installed. See the Dockerfile. 
+Direction-dependent calibration for Apertif. The pipeline is based on the LOFAR Default Preprocessing Pipeline (DPPP/DP3, van Diepen et al. 2018) and the wsclean imaging package (Offringa et al. 2014). It is recommended to use Docker container with the LOFAR tools installed. See the Dockerfile. 
 
 Usage: 
 ```
@@ -24,7 +24,7 @@ optional arguments:
 The config file `imcal.yml` has sections for every step with the corresponding parameters.
 Most of the parameters have explicit comments inside the config file. 
 For example the initial section *split* allows splitting the data by providing _startchan_ and _nchan_ parameters. 
-The next section, *nvss*, can be used for preliminary phase calibration against the NVSS catalog... 
+The next section, *nvss*, can be used for preliminary phase calibration against the NVSS catalog (Condon et al. 1998).
 
 For more information see:
 
