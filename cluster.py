@@ -634,7 +634,7 @@ def voronoi_clustering(fig, ax, df, wcs, resid_data, nbright, nclusters,
         else:
             clusters_centers.append([ra, dec])
             clusters.append(c)
-        print(ra, dec)
+        logging.info('Cluster at %s %s', ra, dec)
 
         if (isinstance(nclusters, int)) and (len(clusters_centers) >= nclusters):
             logging.debug('Max cluster number reached. Breaking...')
@@ -957,7 +957,6 @@ def main(img, resid, model, clustering_method='Voronoi', add_manual=False, nclus
     fig.savefig(imgbase+'-clustering.png')
     return output
 
-
-### if __name__ == "__main__":
 if __name__ == "__main__":
-    main(img, resid, model, clustering_method='Voronoi', nclusters=6)
+    # main(img, resid, model, clustering_method='Voronoi', nclusters=6)
+    pass

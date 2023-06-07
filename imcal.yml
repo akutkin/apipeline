@@ -101,7 +101,7 @@ cluster:
     cluster_radius: 5 # arcmin
     cluster_overlap: 1.6 # if lower than 2 clusters can intersect
     clustering_method :  voronoi # can also be auto or manual
-    voronoi_search_artifacts: False # set True to search for artifacts around bright sources
+    voronoi_search_artifacts: False # search for artifacts around bright sources
     add_manual: False
 
 ######################## DD CALIBRATION #######################
