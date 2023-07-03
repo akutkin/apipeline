@@ -27,9 +27,10 @@ def get_autocorr(tab, ant, avg='time', flagged=False):
         data[q.getcol('FLAG')] = np.nan
     if avg.lower() == 'time':
         return abs(np.nanmean(data, axis=0))
-    elif avg.lower().startswith('freq'):
+    elif avg.lower().startswith('freq') and len(data.shape)==3:
+        print(data.shape)
         return abs(np.nanmean(data, axis=1))
-    elif avg.lower().startswith('pol'):
+    elif avg.lower().startswith('pol') and len(data.shape)==3:
         return abs(np.nanmean(data, axis=2))
     else:
         logging.error('Unknown average keywodr, must be time/freq/pol...')
@@ -99,8 +100,10 @@ def plot_autocorrs(ms, flagged=False):
         antname = antnames[i]
         avg_time = get_autocorr(tab, ant, avg='time', flagged=flagged) # TIME_AVG
         avg_freq = get_autocorr(tab, ant, avg='freq', flagged=flagged)   # FREQ_AVG
+        if not isinstance(avg_time, np.ndarray) or not isinstance(avg_freq, np.ndarray):
+            continue
         med_time_avgs.append(np.nanmedian(avg_time, axis=0))
-        med_freq_avgs.append(np.nanmedian(avg_freq, axis=0))
+        med_freq_avgs.append(np.nanmedian(avg_freq, axis=1))
         for fig, res in zip ([fig1, fig2], [avg_time, avg_freq]):
             ax = fig.add_subplot(ny, nx, i+1)
             at = AnchoredText(antname, prop=dict(size=9), frameon=True, loc='upper left')

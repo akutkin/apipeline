@@ -932,7 +932,7 @@ def main(img, resid, model, clustering_method='Voronoi', add_manual=False, nclus
         # racen = f[0].header['CRVAL1']
         # deccen = f[0].header['CRVAL2']
     fig = plt.figure(figsize=[12,12])
-    ax = fig.add_subplot(1,1,1, projection=wcs.celestial)
+    ax = fig.add_subplot(1,1,1, projection=wcs.celestial[0])
     vmin, vmax = np.percentile(image_data, 5), np.percentile(image_data, 95)
     ax.imshow(resid_data, vmin=vmin, vmax=vmax, origin='lower')#cmap='gray', vmin=2e-5, vmax=0.1)#, norm=LogNorm())
 
@@ -960,4 +960,5 @@ def main(img, resid, model, clustering_method='Voronoi', add_manual=False, nclus
 
 ### if __name__ == "__main__":
 if __name__ == "__main__":
-    main(img, resid, model, clustering_method='Voronoi', nclusters=6)
+    pass
+    # main(img, resid, model, clustering_method='Voronoi', nclusters=6)

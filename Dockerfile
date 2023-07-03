@@ -4,7 +4,7 @@ FROM ubuntu:20.04 as builder
 # It lives on the head of its dependencies.
 
 # Install all build-time dependencies
-RUN export DEBIAN_FRONTEND=noninteractive && \ 
+RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update && \
     apt-get install -y \
         bison \
@@ -13,7 +13,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         casacore-dev \
         cmake \
         flex \
-        gfortran \ 
+        gfortran \
         git \
         libblas-dev \
         libboost-date-time-dev \
@@ -61,7 +61,7 @@ RUN git clone --depth 1 --branch ${DYSCO_VERSION} \
     cd dysco/build && \
     cmake .. -DPORTABLE=${PORTABLE} && \
     make install -j`nproc`
-    
+
 ARG IDG_VERSION=master
 # IDG doesn't work with --depth 1, because it needs all branches to
 # determine its version :-(
@@ -137,8 +137,8 @@ RUN git clone --depth 1 --branch ${WSCLEAN_VERSION} \
 #ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/karma/amd64_Linux_libc6.3/lib/
 #ENV KARMABASE="/usr/local/karma/amd64_Linux_libc6.3"
 
-    
-    
+
+
 # Do not use `pip` from the Debian repository, but fetch it from PyPA.
 # This way, we are sure that the latest versions of `pip`, `setuptools`, and
 # `wheel` are installed in /usr/local, the only directory we're going to copy
@@ -162,7 +162,7 @@ RUN \
     make -j4 && \
     cp bbs2model cluster editmodel render /usr/local/bin/ && \
     cd
-    
+
 # Tom's stuff
 ADD makemask /src/makemask
 RUN cd /src/makemask && \
@@ -173,10 +173,10 @@ RUN cd /src/makemask && \
     cp makeMaskFits makeNoiseMapFits makeCombMaskFits makeNoiseMapFitsLow /usr/local/bin/ && \
     cd
 
-#    gcc getMaxFits.c -o getMaxFits -lcfitsio -lm && \    
+#    gcc getMaxFits.c -o getMaxFits -lcfitsio -lm && \
 #    gcc locNoiseMed.c -o locNoiseMed -lcfitsio -lm && \
 #    gcc cookbook.c -o cookbook -lcfitsio -lm && \
-    
+
 #---------------------------------------------------------------------------
 # The image will now be rebuilt without adding the sources, in order to
 # reduce the size of the image.
@@ -199,7 +199,7 @@ ARG DP3_VERSION=master
 ARG WSCLEAN_VERSION=master
 
 
-# Only install run-time required packages 
+# Only install run-time required packages
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update && \
     apt-get install -y \
@@ -253,13 +253,13 @@ RUN wget -q -O /WSRT_Measures.ztar \
     rm /WSRT_Measures.ztar
 
 # Some python stuff
-RUN python3 -m pip install h5py pandas pyyaml astropy matplotlib scipy shapely bdsf ipython radio_beam scikit-learn
+RUN python3 -m pip install h5py pandas pyyaml astropy matplotlib==3.5.2 scipy shapely bdsf ipython radio_beam scikit-learn
 #    cd /src && \
 #   git clone https://github.com/lofar-astron/PyBDSF.git && \
 #  cd /src/PyBDSF && \
 #    python3 -m pip install . && \
-#    cd    
-    
+#    cd
+
 # AImCal
 ADD imcal.py /opt/imcal.py
 ADD cluster.py /opt/cluster.py
