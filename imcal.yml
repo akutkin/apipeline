@@ -3,6 +3,10 @@
 #===========================================================================
 # global: # provide executables here
 
+# TODO:
+# adjust solution intervals based on unflagged data available
+# a better solutions plotting
+
 ############################## SPLIT ##########################################
 split:
     startchan: 0 # start channel to split from
@@ -41,7 +45,7 @@ clean1: # wsclean setup (see https://wsclean.readthedocs.io/en/latest/)
     autothresh: 5
     multiscale: False
     clip_model_level: null # use a float number to clip the model to above this level. null is None.
-    kwstring: '-use-wgridder -parallel-deconvolution 1400 -weight briggs -1.5' # use this for additional wsclean options, e.g. '-weight uniform -use-idg'
+    kwstring: '-gridder wgridder -parallel-deconvolution 1400' # use this for additional wsclean options, e.g. '-weight uniform -use-idg'
 
 dical1: # DPPP setup for direction independent calibration
     solint: 20
@@ -58,7 +62,7 @@ clean2:
     autothresh: 5
     multiscale: False
     clip_model_level: null
-    kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3 -weight briggs -1.5'
+    kwstring: '-gridder wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3'
 
 dical2:
     solint: 1
@@ -74,7 +78,7 @@ clean3:
     autothresh: 3.5
     multiscale: False
     clip_model_level: null
-    kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3 -weight briggs -1.5'
+    kwstring: '-gridder wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3'
 
 dical3:
     solint: 120
@@ -90,7 +94,7 @@ clean4:
     autothresh: 1.0
     multiscale: True
     clip_model_level: null
-    kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3 -weight briggs -1.5'
+    kwstring: '-gridder wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3'
 
 ####################### CLUSTERING #######################
 cluster:
@@ -121,9 +125,9 @@ clean5:
     autothresh: 0.5
     multiscale: True
     clip_model_level: null
-    kwstring: '-use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3 -weight briggs -1.5'
+    kwstring: '-gridder wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3'
 
-### test for facet clean
+### facet clean (slow)
 facet_clean:
     imagesize: 3072
     pixelsize: 3
@@ -132,12 +136,7 @@ facet_clean:
     autothresh: 0.5
     multiscale: True
     clip_model_level: null
-    kwstring: '-facet-regions ddfacets.reg -apply-facet-solutions ddsols.h5 amplitude000,phase000 -use-wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3 -weight briggs -1.5'
+    kwstring: '-facet-regions ddfacets.reg -apply-facet-solutions ddsols.h5 amplitude000,phase000 -gridder wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3'
 
 
 ### END
-
-
-## TODO:
-#plotsols:
-#
