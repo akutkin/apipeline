@@ -49,9 +49,11 @@ clean1: # wsclean setup (see https://wsclean.readthedocs.io/en/latest/)
 
 dical1: # DPPP setup for direction independent calibration
     solint: 20
+    ntimeslots: 0 # number of time chunks with the same solution (if >0 overwrites solint parameter)
     mode: 'phaseonly'
     uvlambdamin: 500 # Ignore baselines / channels with UV < uvlambdamin wavelengths.
-    cal_nchan: 72 # number of chans with the same solutions
+    cal_nchan: 0 # number of chans with the same solutions; 'auto' -- calculate inside program
+    nfreqchunks: 6 # number of freq chunks with the same solution (overwrites cal_nchan parameter)
 
 clean2:
     imagesize: 3072
@@ -66,9 +68,11 @@ clean2:
 
 dical2:
     solint: 1
+    ntimeslots: 0 # number of time chunks with the same solution (if >0 overwrites solint parameter)
     mode: 'phaseonly'
     uvlambdamin: 500 # Ignore baselines / channels with UV < uvlambdamin wavelengths.
-    cal_nchan: 72 # number of chans with the same solutions
+    cal_nchan: 0     # number of chans with the same solutions
+    nfreqchunks: 6   # number of freq chunks with the same solution (overwrites cal_nchan parameter)
 
 clean3:
     imagesize: 3072
@@ -81,10 +85,12 @@ clean3:
     kwstring: '-gridder wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3'
 
 dical3:
-    solint: 120
+    solint: 0
+    ntimeslots: 6 # number of time chunks with the same solution (if >0 overwrites solint parameter)
     mode: 'diagonal'
     uvlambdamin: 500 # Ignore baselines / channels with UV < uvlambdamin wavelengths.
-    cal_nchan: 72 # number of chans with the same solutions.
+    cal_nchan: 0    # number of chans with the same solutions.
+    nfreqchunks: 6 # number of freq chunks with the same solution (overwrites cal_nchan parameter)
 
 clean4:
     imagesize: 3072
@@ -112,7 +118,9 @@ cluster:
 ddcal: # see DPPP/DDECal documentation
     solint: 120 # Solution interval in timesteps (1 corresponds to 30 seconds for Apertif).
     mode: 'diagonal' # Type of constraint to apply.
-    nfreq: 72 # Number of channels in each channel block, for which the solution is assumed to be constant.
+    nfreq: 0 # Number of channels in each channel block, for which the solution is assumed to be constant.
+    nfreqchunks: 6 # number of freq chunks with the same solution (overwrites cal_nchan parameter)
+    ntimeslots: 6 # number of time chunks with the same solution (overwrites solint parameter)
     startchan: 0
     nchan: 0
     uvlambdamin: 500 # Ignore baselines / channels with UV < uvlambdamin wavelengths.

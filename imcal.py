@@ -4,6 +4,8 @@
 imaging and self-calibration pipeline for Apertif
 """
 
+import logging
+
 import os
 import sys
 import matplotlib
@@ -17,12 +19,12 @@ from subprocess import Popen as Process, TimeoutExpired, PIPE
 import h5py
 import pandas as pd
 import glob
-import logging
 import yaml
 import argparse
 
+
 # from astropy.coordinates import SkyCoord
-# from astropy.time import Time
+from astropy.time import Time
 import astropy.units as u
 from astropy.io import fits
 
@@ -34,6 +36,9 @@ from nvss_cutout import main as nvss_cutout
 from radio_beam import Beam
 from radio_beam import EllipticalGaussian2DKernel
 from scipy.fft import ifft2, ifftshift
+
+import casacore.tables as ct
+
 
 _POOL_TIME = 300 # SECONDS
 _MAX_TIME = 1 * 3600 # SECONDS
@@ -226,7 +231,7 @@ def get_image_ra_dec_min_max(msin):
     """
     outbase = os.path.splitext(msin.rstrip('/'))[0]+'-wsclean'
     outname = outbase+'-image.fits'
-    cmd = f'wsclean -name {outbase} -niter 0 -size 3072 3072 -scale 3arcsec -use-wgridder {msin}'
+    cmd = f'wsclean -name {outbase} -niter 0 -size 3072 3072 -scale 3arcsec -gridder wgridder {msin}'
     if os.path.exists(outname):
         logging.debug('Image exists. Skipping cleaning...')
     else:
@@ -323,11 +328,18 @@ def preflag(msin, msout=None, **kwargs):
     return msout
 
 
-def dical(msin, srcdb, msout=None, h5out=None, solint=1, startchan=0, split_nchan=0,
-          mode='phaseonly', cal_nchan=0, uvlambdamin=500, ):
+def dical(msin, srcdb, msout=None, h5out=None, solint=1, ntimeslots=0, startchan=0, split_nchan=0,
+          mode='phaseonly', cal_nchan=0, nfreqchunks=0, uvlambdamin=500, ):
     """ direction independent calibration with DPPP """
     h5out = h5out or modify_filename(msin, f'_dical_dt{solint}_{mode}', ext='.h5')
     msout = msout or modify_filename(msin, f'_dical_dt{solint}_{mode}')
+    if nfreqchunks:
+        cal_nchan = ct.table(msin).getcol('DATA').shape[1]//nfreqchunks # number of freq channels in the MS
+        logging.debug('Calculating Nchan for solutions, assuming %s chunks... nchan = %s', nfreqchunks, cal_nchan)
+    if ntimeslots:
+        solint = int((11.5 * 60 * 2) // ntimeslots)
+        logging.debug('Calculating solution interval, assuming %s slots... soint = %s', ntimeslots, solint)
+
     command_args = [f'msin={msin}',
            f'msout={msout}',
            f'cal.caltype={mode}',
@@ -348,12 +360,19 @@ def dical(msin, srcdb, msout=None, h5out=None, solint=1, startchan=0, split_ncha
     return msout
 
 
-def ddecal(msin, srcdb, msout=None, h5out=None, solint=120, nfreq=30,
+def ddecal(msin, srcdb, msout=None, h5out=None, solint=120, ntimeslots=0, nfreq=30, nfreqchunks=6,
            startchan=0, nchan=0,  mode='diagonal', uvlambdamin=500, subtract=True, ):
     """ Perform direction dependent calibration with DPPP """
     h5out = h5out or os.path.split(msin)[0] + '/ddcal.h5'
     msbase = os.path.basename(msin).split('.')[0]
     msout = msout or '{}_{}_{}.MS'.format(msbase,mode, solint)
+    if nfreqchunks:
+        nfreq = ct.table(msin).getcol('DATA').shape[1]//nfreqchunks # number of freq channels in the MS
+        logging.debug('Calculating Nchan for solutions, assuming %s chunks... N = %s', nfreqchunks, nfreq)
+    if ntimeslots:
+        solint = int((11.5 * 60 * 2) // ntimeslots)
+        logging.debug('Calculating solution interval, assuming %s slots... soint = %s', ntimeslots, solint)
+
     cmd = 'DP3 msin={msin} msout={msout} \
           msin.startchan={startchan} \
           msin.nchan={nchan} \
@@ -424,8 +443,6 @@ def view_sols(h5param, outname=None):
                     else :
                         ax.plot(timex, 360.0/np.pi*gavg[:,  i, 0], alpha=0.7,label='XX')
                         ax.plot(timex, 360.0/np.pi*gavg[:,  i, 1], alpha=0.7,label='YY')
-
-
                     if i == 0:
                       ax.legend(['XX','YY'])
                 if i == 10:
@@ -438,14 +455,14 @@ def view_sols(h5param, outname=None):
             fig1.savefig(f'{outname}_amp.png')
         except:
             fig1 = ax1 = None
-            logging.error('No amplitude solutions found')
+            logging.debug('No amplitude solutions found')
 
         try:
             fig2, ax2 = plot_sols(h5param, 'phase000')
             fig2.savefig(f'{outname}_phase.png')
         except:
             fig2 = ax2 = None
-            logging.error('No phase solutions found')
+            logging.debug('No phase solutions found')
     # return fig1, ax1, fig2, ax2
 
 
@@ -478,14 +495,27 @@ def remove_model_components_below_level(model, level=0.0, out=None):
 
 def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
 
+    from importlib import reload
+    reload(logging)
+    for handler in logging.root.handlers[:]:
+        logging.root.removeHandler(handler)
+    logging.basicConfig(level=logging.DEBUG, format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=[logging.FileHandler("imcal.log"),logging.StreamHandler()], force=True)
+
+
+
     msin = msin.rstrip('/')
+
+
+    logging.info('Starting logger for {}'.format(__name__))
     logging.info('Processing {}'.format(msin))
     logging.info('The config file: {}'.format(cfgfile))
     logging.info('Running steps: {}'.format(args.steps))
 
+    t0 = Time.now()
+
     with open(cfgfile) as f:
         cfg = yaml.safe_load(f)
-
 
     if steps == 'all':
         steps = ['split', 'nvss', 'preflag', 'mask', 'dical', 'ddcal']
@@ -500,7 +530,6 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
         outbase = msbase
 
     ms_split = msbase + '_splt.MS'
-
 
     img0 = outbase + '_0'
     img1 = outbase + '_1'
@@ -563,7 +592,6 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
         view_sols(h5_0, outname=msbase+'_sols_dical0')
     else:
         dical0 = msin
-
 
     if 'mask' in steps:
         if not force and (os.path.exists(img0 +'-image.fits') or (os.path.exists(img0 +'-MFS-image.fits'))):
@@ -664,20 +692,19 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
 
         render(img_ddsub_1+'-image.fits', aomodel, out=img_ddcal_1+'-image.fits')
 
-# This part produces some artifacts. First need to figure out the reason
-#         smoothImage(img_ddcal_1+'-image.fits')
-#         i1 = makeNoiseImage(img_ddcal_1 +'-image.fits', img_ddsub_1 +'-residual.fits', )
-#         i2 = makeNoiseImage(img_ddcal_1 +'-image-smooth.fits', img_ddsub_1 +'-residual.fits',low=True, )
-#         makeCombMask(i1, i2, clip1=3.5, clip2=5, outname=mask4,)
+        smoothImage(img_ddcal_1+'-image.fits')
+        i1 = makeNoiseImage(img_ddcal_1 +'-image.fits', img_ddsub_1 +'-residual.fits', )
+        i2 = makeNoiseImage(img_ddcal_1 +'-image-smooth.fits', img_ddsub_1 +'-residual.fits',low=True, )
+        makeCombMask(i1, i2, clip1=3.5, clip2=5, outname=mask4,)
 
-#         if not force and os.path.exists(img_ddsub_2+'-image.fits'):
-#             pass
-#         else:
-#             wsclean(ddsub, fitsmask=mask4, outname=img_ddsub_2, **cfg['clean5'])
-# #TAO        wsclean(ddsub,outname=img_ddsub, **cfg['clean5'])
+        if not force and os.path.exists(img_ddsub_2+'-image.fits'):
+            pass
+        else:
+            wsclean(ddsub, fitsmask=mask4, outname=img_ddsub_2, **cfg['clean5'])
 
-#         aomodel = bbs2model(img_dical+'-sources.txt', img_dical+'-model.ao', )
-#         render(img_ddsub_2+'-image.fits', aomodel, out=img_ddcal_2+'-image.fits', )
+
+        aomodel = bbs2model(img_dical+'-sources.txt', img_dical+'-model.ao', )
+        render(img_ddsub_2+'-image.fits', aomodel, out=img_ddcal_2+'-image.fits', )
 
 # test facet imaging:
     if 'facet' in steps:
@@ -691,15 +718,16 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
         wsclean(ddvis, fitsmask=mask3, save_source_list=False, outname='img-facet', **cfg['facet_clean'],)
 
 
+    extime = Time.now() - t0
+    logging.info("Execution time: {:.1f} min".format(extime.to("minute").value))
+
+    logging.info('Done')
+
     return 0
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
-    logging.info('Starting logger for {}'.format(__name__))
-    logger = logging.getLogger(__name__)
 
-    # t0 = Time.now()
     parser = argparse.ArgumentParser(description='DDCal Inputs')
     parser.add_argument('msin', help='MS file to process')
     parser.add_argument('-c', '--config', action='store',
@@ -713,5 +741,3 @@ if __name__ == "__main__":
         os.path.join(os.path.dirname(os.path.realpath(__file__)), 'imcal.yml')
     # msin = args.msin
     main(args.msin, outbase=args.outbase, steps=args.steps, cfgfile=configfile, force=args.force)
-    # extime = Time.now() - t0
-    # print("Execution time: {:.1f} min".format(extime.to("minute").value))
