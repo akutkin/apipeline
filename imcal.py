@@ -333,10 +333,10 @@ def dical(msin, srcdb, msout=None, h5out=None, solint=1, ntimeslots=0, startchan
     """ direction independent calibration with DPPP """
     h5out = h5out or modify_filename(msin, f'_dical_dt{solint}_{mode}', ext='.h5')
     msout = msout or modify_filename(msin, f'_dical_dt{solint}_{mode}')
-    if nfreqchunks:
+    if not cal_nchan and nfreqchunks:
         cal_nchan = ct.table(msin).getcol('DATA').shape[1]//nfreqchunks # number of freq channels in the MS
         logging.debug('Calculating Nchan for solutions, assuming %s chunks... nchan = %s', nfreqchunks, cal_nchan)
-    if ntimeslots:
+    if not solint and ntimeslots:
         solint = int((11.5 * 60 * 2) // ntimeslots)
         logging.debug('Calculating solution interval, assuming %s slots... soint = %s', ntimeslots, solint)
 
@@ -509,7 +509,7 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
 
     logging.info('Starting logger for {}'.format(__name__))
     logging.info('Processing {}'.format(msin))
-    logging.info('The config file: {}'.format(cfgfile))
+    logging.info('The config file: {}'.format(os.path.abspath(cfgfile)))
     logging.info('Running steps: {}'.format(args.steps))
 
     t0 = Time.now()
@@ -647,11 +647,17 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
 
             makesourcedb(img3+'-sources.txt', out=model3)
 
+# determine the solution interval for amplitude calibration (Tom's mail on 11.10.2023)
+
+        totalflux = np.nansum(fits.getdata(img3 +'-model.fits'))
+        solinterval = round(max(1.0,1.0/totalflux/totalflux))*5
+        logging.debug('Calculating optimal solution interval for DICAL3 step:, %s min', solinterval/2)
+
 # dical3
         if not force and os.path.exists(dical3):
             logging.debug('dical/dical3 step: MS exists, use --f to overwrite...')
         else:
-            dical3 = dical(dical2, model3, msout=dical3, h5out=h5_3, **cfg['dical3'], )
+            dical3 = dical(dical2, model3, msout=dical3, h5out=h5_3, solint=solinterval, **cfg['dical3'],)
             view_sols(h5_3, outname=msbase+'_sols_dical3')
 
 # clean4

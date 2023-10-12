@@ -85,8 +85,6 @@ clean3:
     kwstring: '-gridder wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3'
 
 dical3:
-    solint: 0
-    ntimeslots: 6 # number of time chunks with the same solution (if >0 overwrites solint parameter)
     mode: 'diagonal'
     uvlambdamin: 500 # Ignore baselines / channels with UV < uvlambdamin wavelengths.
     cal_nchan: 0    # number of chans with the same solutions.
