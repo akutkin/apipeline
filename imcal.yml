@@ -17,7 +17,7 @@ split:
 # except for cases with an extended Apertif source unresolved by NVSS
 nvss: False
 nvsscal:
-    clip_model: 0.001 # Clip NVSS model to not to have sources weaker (Jy)
+    # clip_model: 0.001 # Clip NVSS model to not to have sources weaker (Jy)
     solint: 60
     mode: 'phaseonly'
     uvlambdamin: 500 # Ignore baselines / channels with UV < uvlambdamin wavele$
@@ -32,9 +32,9 @@ clean0: # initial clean
 preflag: # See DP3 steps.preflag
     baseline: # e.g. '[[RTB,*]]'
     reltime: # e.g. '10:20+-20m'
-    chan: # null
+    chan: '[nchan-8..nchan]' # null
     blmin: # in meters
-    freqrange: # [1440 .. 1470 MHz] # freq range to flag
+    freqrange: '[1000..1310MHz]' # '[1440 .. 1470 MHz]' # freq range to flag
 
 clean1: # wsclean setup (see https://wsclean.readthedocs.io/en/latest/)
     imagesize: 3072

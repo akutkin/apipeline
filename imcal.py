@@ -245,7 +245,7 @@ def get_image_ra_dec_min_max(msin):
 def makesourcedb(modelfile, out=None, ):
     """ Make sourcedb file from a clustered model """
     out = out or os.path.splitext(modelfile)[0] + '.sourcedb'
-    cmd = 'makesourcedb in={} out={}'.format(modelfile, out)
+    cmd = 'makesourcedb in={} out={} append=False'.format(modelfile, out)
     logging.debug("Running command: %s", cmd)
     subprocess.call(cmd, shell=True)
     return out
@@ -319,7 +319,8 @@ def preflag(msin, msout=None, **kwargs):
     msout = msout or '.'
     command_args = ['steps=[preflag]',
                     f'msin={msin}',
-                    f'msout={msout}'] + ['preflag.'+'='.join(_) for _ in kwargs.items() if _[1] is not None]
+                    f'msout={msout}',
+                    'msout.overwrite=True',] + ['preflag.'+'='.join(_) for _ in kwargs.items() if _[1] is not None]
     logging.info('Flagging data (%s)', command_args)
     return_code = execute_dppp(command_args)
     logging.debug('Preflag of %s returned status code %s', msin, return_code)
@@ -342,6 +343,7 @@ def dical(msin, srcdb, msout=None, h5out=None, solint=1, ntimeslots=0, startchan
 
     command_args = [f'msin={msin}',
            f'msout={msout}',
+           f'msout.overwrite=True',
            f'cal.caltype={mode}',
            f'cal.sourcedb={srcdb}',
            f'cal.solint={solint}',
@@ -583,10 +585,13 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
         msin = ms_split
 
     if 'preflag' in steps:
-        msin = preflag(msin, msout=outbase+'_preflagged.MS', **cfg['preflag'])
+        for k, v in cfg['preflag'].items():
+            if v:
+                kwarg = {k:v}
+                msin = preflag(msin, msout=outbase+'_preflagged.MS', **kwarg)
 
     if 'nvss' in steps and cfg['nvss']:
-        nvss_model = nvss_cutout(initial_img, nvsscat='/opt/nvss.csv.zip', clip=cfg['nvsscal']['clip_model'])
+        nvss_model = nvss_cutout(initial_img, nvsscat='/opt/nvss.csv.zip', cutoff=0.001)
         makesourcedb(nvss_model, out=nvssMod)
         dical0 = dical(msin, nvssMod, msout=dical0, h5out=h5_0, **cfg['nvsscal'])
         view_sols(h5_0, outname=msbase+'_sols_dical0')

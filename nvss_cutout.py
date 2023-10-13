@@ -16,7 +16,7 @@ import pandas as pd
 def wsrt_beam(radius) :
     """ model for old WSRT beam (r in degrees) """
     return np.cos(np.minimum(70*1.4*np.deg2rad(radius),1.0881))**6
-    
+
 
 def load_nvss(nvss_catalog_file):
     """ read NVSS catalog and return dataframe with [ra, dec, flux, err] columns """
@@ -47,29 +47,27 @@ def main(img, nvsscat='/opt/nvss.csv.zip', cutoff=0.001, outname=None):
     nvss_df = load_nvss(nvsscat)
     nvss_df = nvss_df.query('abs(ra - @ra0) <= @imsizedeg & abs(dec - @dec0) <= @imsizedeg')
     nvss_df['flux_scaled'] = nvss_df.apply(scale_for_beam, axis=1)
-    
+
     if outname is None:
         outname = os.path.splitext(img)[0] + '_nvss_model.txt'
-        
+
     with open(outname, 'w') as fout:
         fout.write('Format = Name, Type, Ra, Dec, I, SpectralIndex, LogarithmicSI, \
                     ReferenceFrequency=\'1364100669.00262\', MajorAxis, MinorAxis, Orientation\n')
         ns = 0
         for index, row in nvss_df.iterrows():
             rah, ram, ras = Angle(row.ra, unit='deg').hms
-            dd, dm, ds = Angle(row.ra, unit='deg').dms            
-            outstr = 's0s{},POINT,{}:{}:{:.3f},{}.{}.{:.3f},{},'.format(ns, rah, ram, ras, dd, dm, ds, row.flux_scaled)
+            dd, dm, ds = Angle(row.dec, unit='deg').dms
+            outstr = 's0s{},POINT,{:d}:{:d}:{:.3f},{:d}.{:d}.{:.3f},{},'.format(ns, int(rah), int(ram), ras, int(dd), int(dm), ds, row.flux_scaled)
             outstr=outstr+'[],false,1370228271.48438,,,\n'
             fout.write(outstr)
             ns += 1
     logging.info('Wrote NVSS model to %s', outname)
     return outname
 
-        
+
 if __name__ == "__main__":
     img = 'wsclean-image.fits'
     nvsscat = 'nvss.csv.zip'
     cutoff = 0.001
     main(img, cutoff=0.001, nvsscat=nvsscat, outname=None)
-
-
