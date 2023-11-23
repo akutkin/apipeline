@@ -11,14 +11,14 @@
 split:
     startchan: 0 # start channel to split from
     nchan: 0 # 0 means till the end
-
+    crop_under1310_last_8chan: True # cut < 1310MHz and last 8 chans from MS / do not use together with the above (!)
 ####################### NVSS calibration ######################################
 # calibrate against the NVSS catalog. Generally works well
 # except for cases with an extended Apertif source unresolved by NVSS
-nvss: False
-nvsscal:
+nvss:
+    nvsscal: False
     # clip_model: 0.001 # Clip NVSS model to not to have sources weaker (Jy)
-    solint: 60
+    solint: 240
     mode: 'phaseonly'
     uvlambdamin: 500 # Ignore baselines / channels with UV < uvlambdamin wavele$
 
@@ -32,9 +32,10 @@ clean0: # initial clean
 preflag: # See DP3 steps.preflag
     baseline: # e.g. '[[RTB,*]]'
     reltime: # e.g. '10:20+-20m'
-    chan: '[nchan-8..nchan]' # null
+    abstime: # 15-Dec-2021/00:55..15-Dec-2021/01:45
+    chan: #'[nchan-8..nchan]' # null
     blmin: # in meters
-    freqrange: '[1000..1310MHz]' # '[1440 .. 1470 MHz]' # freq range to flag
+    freqrange: #'[1000..1310MHz]' # '[1440 .. 1470 MHz]' # freq range to flag
 
 clean1: # wsclean setup (see https://wsclean.readthedocs.io/en/latest/)
     imagesize: 3072
@@ -53,7 +54,7 @@ dical1: # DPPP setup for direction independent calibration
     mode: 'phaseonly'
     uvlambdamin: 500 # Ignore baselines / channels with UV < uvlambdamin wavelengths.
     cal_nchan: 0 # number of chans with the same solutions; 'auto' -- calculate inside program
-    nfreqchunks: 6 # number of freq chunks with the same solution (overwrites cal_nchan parameter)
+    nfreqchunks: 4 # number of freq chunks with the same solution (overwrites cal_nchan parameter)
 
 clean2:
     imagesize: 3072
@@ -72,7 +73,7 @@ dical2:
     mode: 'phaseonly'
     uvlambdamin: 500 # Ignore baselines / channels with UV < uvlambdamin wavelengths.
     cal_nchan: 0     # number of chans with the same solutions
-    nfreqchunks: 6   # number of freq chunks with the same solution (overwrites cal_nchan parameter)
+    nfreqchunks: 4   # number of freq chunks with the same solution (overwrites cal_nchan parameter)
 
 clean3:
     imagesize: 3072
@@ -88,7 +89,7 @@ dical3:
     mode: 'diagonal'
     uvlambdamin: 500 # Ignore baselines / channels with UV < uvlambdamin wavelengths.
     cal_nchan: 0    # number of chans with the same solutions.
-    nfreqchunks: 6 # number of freq chunks with the same solution (overwrites cal_nchan parameter)
+    nfreqchunks: 4 # number of freq chunks with the same solution (overwrites cal_nchan parameter)
 
 clean4:
     imagesize: 3072
@@ -117,7 +118,7 @@ ddcal: # see DPPP/DDECal documentation
     solint: 120 # Solution interval in timesteps (1 corresponds to 30 seconds for Apertif).
     mode: 'diagonal' # Type of constraint to apply.
     nfreq: 0 # Number of channels in each channel block, for which the solution is assumed to be constant.
-    nfreqchunks: 6 # number of freq chunks with the same solution (overwrites cal_nchan parameter)
+    nfreqchunks: 4 # number of freq chunks with the same solution (overwrites cal_nchan parameter)
     ntimeslots: 6 # number of time chunks with the same solution (overwrites solint parameter)
     startchan: 0
     nchan: 0

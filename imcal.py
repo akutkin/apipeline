@@ -44,19 +44,6 @@ _POOL_TIME = 300 # SECONDS
 _MAX_TIME = 1 * 3600 # SECONDS
 _MAX_POOL = _MAX_TIME // _POOL_TIME
 
-def execute_binary(binary, args, ):
-    command = [f'{binary}'] + args
-    logging.debug('executing %s', ','.join(command))
-    dppp_process = subprocess.Popen(command)
-    for i in range(_MAX_POOL):
-        try:
-            return_code = dppp_process.wait(_POOL_TIME)
-            logging.debug('DPPP process %s finished with status: %s', dppp_process.pid, return_code)
-            return return_code
-        except TimeoutExpired as e:
-            logging.debug('DPPP process %s still running', dppp_process.pid)
-            continue
-
 
 def fft_psf(bmaj, bmin, bpa, size=3073):
     SIGMA_TO_FWHM = np.sqrt(8*np.log(2))
@@ -132,7 +119,7 @@ def wsclean(msin, wsclean_bin='wsclean', datacolumn='DATA', outname=None, pixels
             multifreq=0, autothresh=0.3,
             automask=3, niter=1000000, multiscale=False, save_source_list=True,
             clearfiles=True, clip_model_level=None,
-            fitsmask=None, kwstring=''):
+            fitsmask=None, kwstring='', **kwargs):
     """
     wsclean
     """
@@ -290,7 +277,7 @@ def check_return_code(return_code):
         pass
 
 
-def split_ms(msin_path, startchan, nchan=0, msout_path='', ):
+def split_ms(msin_path, startchan=0, nchan=0, msout_path='', ):
     """
     use casacore.tables.msutil.msconcat() to concat the new MS files
     """
@@ -330,7 +317,7 @@ def preflag(msin, msout=None, **kwargs):
 
 
 def dical(msin, srcdb, msout=None, h5out=None, solint=1, ntimeslots=0, startchan=0, split_nchan=0,
-          mode='phaseonly', cal_nchan=0, nfreqchunks=0, uvlambdamin=500, ):
+          mode='phaseonly', cal_nchan=0, nfreqchunks=0, uvlambdamin=500, **kwargs):
     """ direction independent calibration with DPPP """
     h5out = h5out or modify_filename(msin, f'_dical_dt{solint}_{mode}', ext='.h5')
     msout = msout or modify_filename(msin, f'_dical_dt{solint}_{mode}')
@@ -363,7 +350,7 @@ def dical(msin, srcdb, msout=None, h5out=None, solint=1, ntimeslots=0, startchan
 
 
 def ddecal(msin, srcdb, msout=None, h5out=None, solint=120, ntimeslots=0, nfreq=30, nfreqchunks=6,
-           startchan=0, nchan=0,  mode='diagonal', uvlambdamin=500, subtract=True, ):
+           startchan=0, nchan=0,  mode='diagonal', uvlambdamin=500, subtract=True, **kwargs):
     """ Perform direction dependent calibration with DPPP """
     h5out = h5out or os.path.split(msin)[0] + '/ddcal.h5'
     msbase = os.path.basename(msin).split('.')[0]
@@ -580,9 +567,21 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
     logging.info('Image RA, DEC: %s, %s', img_ra, img_dec)
     logging.info('Image Min, Max: %s, %s', img_min, img_max)
 
-    if 'split' in steps and (not os.path.exists(ms_split)) and (cfg['split']['startchan'] or cfg['split']['nchan']):
-        ms_split = split_ms(msin, msout_path=ms_split, **cfg['split'])
-        msin = ms_split
+    if 'split' in steps:
+        if os.path.exists(ms_split) and not force:
+            logging.info('splitted MS exists. skipping...')
+        elif (cfg['split']['startchan'] or cfg['split']['nchan']):
+            msin = split_ms(msin, msout_path=ms_split, **cfg['split'])
+        elif cfg['split']['crop_under1310_last_8chan']:
+            logging.info('Cutting < 1310MHz and last 8 channels from MS')
+            nchans = ct.table(msin).getcol('DATA').shape[1]
+            if nchans == 192:
+                logging.debug('Old frequency setup (192 chans). Splitting...')
+                msin = split_ms(msin, msout_path=ms_split, startchan=40, nchan=192-48)
+            elif nchans == 288:
+                logging.debug('New frequency setup (288 chans). Splitting...')
+                msin = split_ms(msin, msout_path=ms_split, startchan=20, nchan=288-28)
+
 
     if 'preflag' in steps:
         for k, v in cfg['preflag'].items():
@@ -590,10 +589,10 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
                 kwarg = {k:v}
                 msin = preflag(msin, msout=outbase+'_preflagged.MS', **kwarg)
 
-    if 'nvss' in steps and cfg['nvss']:
+    if 'nvss' in steps and cfg['nvss']['nvsscal']:
         nvss_model = nvss_cutout(initial_img, nvsscat='/opt/nvss.csv.zip', cutoff=0.001)
         makesourcedb(nvss_model, out=nvssMod)
-        dical0 = dical(msin, nvssMod, msout=dical0, h5out=h5_0, **cfg['nvsscal'])
+        dical0 = dical(msin, nvssMod, msout=dical0, h5out=h5_0, **cfg['nvss'])
         view_sols(h5_0, outname=msbase+'_sols_dical0')
     else:
         dical0 = msin
