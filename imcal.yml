@@ -86,6 +86,7 @@ clean3:
     kwstring: '-gridder wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3'
 
 dical3:
+    solint:  # leave empty to calculate automatically absed on image flux
     mode: 'diagonal'
     uvlambdamin: 500 # Ignore baselines / channels with UV < uvlambdamin wavelengths.
     cal_nchan: 0    # number of chans with the same solutions.

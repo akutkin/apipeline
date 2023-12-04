@@ -653,15 +653,19 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
 
 # determine the solution interval for amplitude calibration (Tom's mail on 11.10.2023)
 
-        totalflux = np.nansum(fits.getdata(img3 +'-model.fits'))
-        solinterval = round(max(1.0,1.0/totalflux/totalflux))*5
-        logging.debug('Calculating optimal solution interval for DICAL3 step:, %s min', solinterval/2)
+        if cfg['dical3']['solint']:
+            solinterval = cfg['dical3']['solint']
+        else:
+            totalflux = np.nansum(fits.getdata(img3 +'-model.fits'))
+            solinterval = round(max(1.0,1.0/totalflux/totalflux))*5
+            logging.debug('Using optimal solution interval for DICAL3 step:, %s min', solinterval/2)
 
 # dical3
         if not force and os.path.exists(dical3):
             logging.debug('dical/dical3 step: MS exists, use --f to overwrite...')
         else:
-            dical3 = dical(dical2, model3, msout=dical3, h5out=h5_3, solint=solinterval, **cfg['dical3'],)
+            cfg['dical3'].update({'solint':solinterval})
+            dical3 = dical(dical2, model3, msout=dical3, h5out=h5_3, **cfg['dical3'],)
             view_sols(h5_3, outname=msbase+'_sols_dical3')
 
 # clean4
