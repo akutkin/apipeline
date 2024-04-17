@@ -13,6 +13,7 @@ matplotlib.use('agg')
 import matplotlib.pyplot as plt
 # from matplotlib.patches import Circle
 import numpy as np
+import shutil
 import subprocess
 from subprocess import Popen as Process, TimeoutExpired, PIPE
 
@@ -28,10 +29,11 @@ from astropy.time import Time
 import astropy.units as u
 from astropy.io import fits
 
+# local:
 from cluster import main as cluster
 from cluster import write_ds9
-
 from nvss_cutout import main as nvss_cutout
+from ghost_remove import remove_baseline_offsets, remove_ghost_from_model
 
 from radio_beam import Beam
 from radio_beam import EllipticalGaussian2DKernel
@@ -482,7 +484,25 @@ def remove_model_components_below_level(model, level=0.0, out=None):
     return out
 
 
-def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
+def modify_conf(cfgfile, params=None):
+    """
+    modify params of the cfgfile
+    example params={'nvss':{'nvsscal':True, 'solint':17}, 'preflag':{'abstime':'15-Dec-2021/00:55..15-Dec-2021/01:45'}}
+    """
+    import ruamel.yaml as yml
+    if not params:
+        return
+    yaml = yml.YAML()
+    # yaml.preserve_quotes = True
+    with open(cfgfile) as fp:
+        data = yaml.load(fp)
+    for key, val in params.items():
+        data[key].update(val)
+    with open(cfgfile, 'w') as out:
+        yaml.dump(data, out)
+
+
+def main(msin, steps='all', outbase=None, cfgfile=None, force=False, params=None):
 
     from importlib import reload
     reload(logging)
@@ -492,16 +512,40 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
         handlers=[logging.FileHandler("imcal.log"),logging.StreamHandler()], force=True)
 
 
-
     msin = msin.rstrip('/')
+    mspath = os.path.split(os.path.abspath(msin))[0]
+    msbase = os.path.splitext(msin)[0]
 
 
     logging.info('Starting logger for {}'.format(__name__))
     logging.info('Processing {}'.format(msin))
-    logging.info('The config file: {}'.format(os.path.abspath(cfgfile)))
     logging.info('Running steps: {}'.format(args.steps))
 
     t0 = Time.now()
+
+# copy config
+    local_cfgfile = msbase + '.yml'
+    if cfgfile is None and not os.path.exists(local_cfgfile):
+        shutil.copy2('imcal.yml', local_cfgfile)
+    elif cfgfile is not None and cfgfile != local_cfgfile:
+        logging.info('Copying config from: %s', cfgfile)
+        shutil.copy2(cfgfile, local_cfgfile)
+    else:
+        logging.error('Check config file')
+    cfgfile = local_cfgfile
+
+    logging.info('Using config file: %s', os.path.abspath(cfgfile))
+
+    if params:
+        print(params)
+        try:
+            params = eval(params.replace("'", "\""))
+            logging.warning('Modifying config file. Params: %s', params)
+            modify_conf(cfgfile, params)
+        except:
+            raise Exception('Wrong params format. Example: {"nvss":{"nvsscal":True,"solint":17}}')
+
+    os.chdir(mspath)
 
     with open(cfgfile) as f:
         cfg = yaml.safe_load(f)
@@ -511,10 +555,9 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
     else:
         steps = steps.split(',')
 
-# define file names:
-    mspath = os.path.split(os.path.abspath(msin))[0]
-    msbase = os.path.splitext(msin)[0]
 
+
+# define file names:
     if outbase is None:
         outbase = msbase
 
@@ -693,6 +736,11 @@ def main(msin, steps='all', outbase=None, cfgfile='imcal.yml', force=False):
         else:
             ddsub, h5out = ddecal(dical3, clustered_sdb, msout=ddsub, h5out=h5_dd, **cfg['ddcal'])
 
+# Ghost removal
+    if True: # maybe make optional?
+        _ = remove_ghost_from_model(img_dical+'-sources.txt', fitsfile=img_dical+'-image.fits', radius=3)
+        _ = remove_baseline_offsets(ddsub)
+
 # view the solutions and save figure
         view_sols(h5_dd, outname=msbase+'_sols_ddcal')
 
@@ -744,14 +792,15 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='DDCal Inputs')
     parser.add_argument('msin', help='MS file to process')
-    parser.add_argument('-c', '--config', action='store',
-                        dest='configfile', help='Config file', type=str)
+    parser.add_argument('-c', '--config', action='store', dest='configfile', help='Config file', type=str)
     parser.add_argument('-o', '--outbase', default=None, help='output prefix', type=str)
     parser.add_argument('-s', '--steps', default='all', help='steps to run. Example: "nvss,mask,dical,ddcal"', type=str)
     parser.add_argument('-f', '--force', action='store_true', help='Overwrite the existing files')
+    parser.add_argument('-p', '--params', default=None, help='Specific config parameters', type=str)
+
 
     args = parser.parse_args()
     configfile = args.configfile or \
         os.path.join(os.path.dirname(os.path.realpath(__file__)), 'imcal.yml')
     # msin = args.msin
-    main(args.msin, outbase=args.outbase, steps=args.steps, cfgfile=configfile, force=args.force)
+    main(args.msin, outbase=args.outbase, steps=args.steps, cfgfile=configfile, force=args.force, params=args.params)

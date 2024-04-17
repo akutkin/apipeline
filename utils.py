@@ -10,9 +10,16 @@ import sys
 import casacore.tables as ct
 
 # msin = '/home/kutkin/mnt/kutkin/lockman/test/200108171_06.MS'
+# msin = sys.argv[1]
+# nchans = ct.table(msin).getcol('DATA').shape[1]
+# print(nchans)
 
-msin = sys.argv[1]
 
-nchans = ct.table(msin).getcol('DATA').shape[1]
+def ghost_remove(msin):
+    """
+    remove ghost surce from visibilities
+    """
+    tab = ct.table(msin)
+    print(tab)
 
-print(nchans)
+ghost_remove()

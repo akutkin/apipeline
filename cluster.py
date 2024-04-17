@@ -601,7 +601,7 @@ def voronoi_clustering(fig, ax, df, wcs, resid_data, nbright, nclusters,
                       boxsize=250, same_source_radius=5, central_region=True,
                       search_artifacts=False):
     """
-    Use Voronoi clustering instead of fixed radius around sources
+    Voronoi clustering
     """
 
     # logging.info('Checking {} brightest model components'.format(nbright))
@@ -610,16 +610,17 @@ def voronoi_clustering(fig, ax, df, wcs, resid_data, nbright, nclusters,
     logging.info('Getting measures for the potential clusters...')
     clusters = []
     clusters_centers = [] #
-
+    print(wcs)
     for ra, dec, flux in bright_df.values:
         c = SkyCoord(ra, dec, unit='deg')
         px, py = np.round(wcs.all_world2pix(c.ra, c.dec, 0)).astype(int)
 # skip the edge sources
         if (abs(px-resid_data.shape[1]) < boxsize) or (abs(py-resid_data.shape[0]) < boxsize):
-            # logging.debug('Skipping the edge source')
+            logging.debug('Skipping the edge source')
             continue
 # Check if the component is nearby
         if clusters and any([c.separation(_).arcmin<same_source_radius for _ in clusters]):
+            logging.debug('Skipping the nearby source')
             continue
 
 
@@ -644,9 +645,9 @@ def voronoi_clustering(fig, ax, df, wcs, resid_data, nbright, nclusters,
         logging.warning('Decreasing number of clusters')
         nclusters = len(clusters_centers)
 
+    print(clusters_centers)
     vor = Voronoi(np.array(clusters_centers))
     voronoi_plot_2d_world(vor, ax=ax, show_vertices=False)
-
     return vor
 
 
@@ -772,8 +773,7 @@ def tessellate(x_pix, y_pix, w, dist_pix, bbox, nouter=64, plot_tessellation=Tru
 
 
 def generate_centroids(
-    xmin, ymin, xmax, ymax, npoints_x, npoints_y, distort_x=0.0, distort_y=0.0
-):
+    xmin, ymin, xmax, ymax, npoints_x, npoints_y, distort_x=0.0, distort_y=0.0):
     """
     Generate centroids for the Voronoi tessellation. These points are essentially
     generated from a distorted regular grid.
