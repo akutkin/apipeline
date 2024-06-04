@@ -214,13 +214,13 @@ def makeCombMask(img1, img2, clip1=5, clip2=7, outname=None) :
     return outname
 
 
-def get_image_ra_dec_min_max(msin):
+def get_image_ra_dec_min_max(msin, size=3072, scale=3):
     """
     Determine image center coords, min and max values for msin
     """
     outbase = os.path.splitext(msin.rstrip('/'))[0]+'-wsclean'
     outname = outbase+'-image.fits'
-    cmd = f'wsclean -name {outbase} -niter 0 -size 3072 3072 -scale 3arcsec -gridder wgridder {msin}'
+    cmd = f'wsclean -name {outbase} -niter 0 -size {size} {size} -scale {scale}arcsec -gridder wgridder {msin}'
     if os.path.exists(outname):
         logging.debug('Image exists. Skipping cleaning...')
     else:
@@ -530,8 +530,8 @@ def main(msin, steps='all', outbase=None, cfgfile=None, force=False, params=None
     elif cfgfile is not None and cfgfile != local_cfgfile:
         logging.info('Copying config from: %s', cfgfile)
         shutil.copy2(cfgfile, local_cfgfile)
-    else:
-        logging.error('Check config file')
+    # else:
+        # logging.error('Check config file')
     cfgfile = local_cfgfile
 
     logging.info('Using config file: %s', os.path.abspath(cfgfile))
@@ -572,12 +572,15 @@ def main(msin, steps='all', outbase=None, cfgfile=None, force=False, params=None
     img_ddsub_2 = outbase + '-ddsub-2'
     img_ddcal_1 = outbase + '-ddcal-1'
     img_ddcal_2 = outbase + '-ddcal-2'
+    img_ddsmsub = outbase + '-ddsmsub'
+    img_ddsmo = outbase + '-ddsmo'
 
     mask0 = outbase + '-mask0.fits'
     mask1 = outbase + '-mask1.fits'
     mask2 = outbase + '-mask2.fits'
     mask3 = outbase + '-mask3.fits'
     mask4 = outbase + '-mask4.fits'
+    mask5 = outbase + '-mask5.fits'
 
     nvssMod = outbase + '_nvss.sourcedb'
     model1 = outbase + '_model1.sourcedb'
@@ -605,7 +608,7 @@ def main(msin, steps='all', outbase=None, cfgfile=None, force=False, params=None
 # get image parameters
     # if 'init' in steps:
     # if not force and os.path.exists(outbase+'-wsclean-image.fits'):
-    initial_img, img_ra, img_dec, img_min, img_max = get_image_ra_dec_min_max(msin)
+    initial_img, img_ra, img_dec, img_min, img_max = get_image_ra_dec_min_max(msin, size=cfg['clean1']['imagesize'])
     logging.info('Image: %s', initial_img)
     logging.info('Image RA, DEC: %s, %s', img_ra, img_dec)
     logging.info('Image Min, Max: %s, %s', img_min, img_max)
@@ -626,7 +629,7 @@ def main(msin, steps='all', outbase=None, cfgfile=None, force=False, params=None
                 msin = split_ms(msin, msout_path=ms_split, startchan=20, nchan=288-28)
 
 
-    if 'preflag' in steps:
+    if 'preflag' in steps and (not os.path.exists(outbase+'_preflagged.MS') or force):
         for k, v in cfg['preflag'].items():
             if v:
                 kwarg = {k:v}
@@ -647,7 +650,7 @@ def main(msin, steps='all', outbase=None, cfgfile=None, force=False, params=None
             threshold = img_max/cfg['clean0']['max_over_thresh']
             threshold = max(threshold, 0.0001)
             wsclean(dical0, outname=img0, automask=None, save_source_list=False, multifreq=False, mgain=None,
-                    kwstring=f'-threshold {threshold}')
+                    kwstring=f'-threshold {threshold}', imagesize=cfg['clean1']['imagesize'], pixelsize=cfg['clean1']['pixelsize'])
             create_mask(img0 +'-image.fits', img0 +'-residual.fits', clipval=10, outname=mask0, )
 
     if 'dical' in steps:
@@ -750,14 +753,15 @@ def main(msin, steps='all', outbase=None, cfgfile=None, force=False, params=None
             wsclean(ddsub, fitsmask=mask3, outname=img_ddsub_1, **cfg['clean5'])
 #TAO        wsclean(ddsub,outname=img_ddsub, **cfg['clean5'])
 
-        aomodel = bbs2model(img_dical+'-sources.txt', img_dical+'-model.ao', )
 
+        aomodel = bbs2model(img_dical+'-sources.txt', img_dical+'-model.ao', )
         render(img_ddsub_1+'-image.fits', aomodel, out=img_ddcal_1+'-image.fits')
 
-        smoothImage(img_ddcal_1+'-image.fits')
-        i1 = makeNoiseImage(img_ddcal_1 +'-image.fits', img_ddsub_1 +'-residual.fits', )
-        i2 = makeNoiseImage(img_ddcal_1 +'-image-smooth.fits', img_ddsub_1 +'-residual.fits',low=True, )
-        makeCombMask(i1, i2, clip1=3.5, clip2=5, outname=mask4,)
+        if not os.path.exists(mask4):
+            smoothImage(img_ddcal_1+'-image.fits')
+            i1 = makeNoiseImage(img_ddcal_1 +'-image.fits', img_ddsub_1 +'-residual.fits', )
+            i2 = makeNoiseImage(img_ddcal_1 +'-image-smooth.fits', img_ddsub_1 +'-residual.fits',low=True, )
+            makeCombMask(i1, i2, clip1=3.5, clip2=5, outname=mask4,)
 
         if not force and os.path.exists(img_ddsub_2+'-image.fits'):
             pass
@@ -767,6 +771,27 @@ def main(msin, steps='all', outbase=None, cfgfile=None, force=False, params=None
 
         aomodel = bbs2model(img_dical+'-sources.txt', img_dical+'-model.ao', )
         render(img_ddsub_2+'-image.fits', aomodel, out=img_ddcal_2+'-image.fits', )
+
+
+# create image with robust=0 (Tom's mail 22 May 2024)
+        if cfg['create_robust0']:
+            if not os.path.exists(img_ddsmsub+'-image.fits'):
+                wsclean(ddsub, fitsmask=mask4, outname=img_ddsmsub, **cfg['clean6'])
+
+            if not os.path.exists(mask5):
+                render(img_ddsmsub+'-image.fits', aomodel, out=img_ddsmo+'-image.fits')
+                smoothImage(img_ddsmsub+'-residual.fits')
+                i1 = makeNoiseImage(img_ddsmo +'-image.fits', img_ddsmsub +'-residual.fits')
+                i2 = makeNoiseImage(img_ddsmsub +'-residual-smooth.fits', img_ddsmsub +'-residual.fits',low=True)
+                makeCombMask(i1, i2, outname=mask5, clip1=3.5, clip2=5)
+
+            if (not os.path.exists(img_ddsmsub+'-2-image.fits')):
+                wsclean(ddsub, fitsmask=mask5,outname=img_ddsmsub+'-2', **cfg['clean6'])
+
+            render(img_ddsmsub+'-2-image.fits', aomodel, out=img_ddsmo+'-2-image.fits')
+
+
+
 
 # test facet imaging:
     if 'facet' in steps:

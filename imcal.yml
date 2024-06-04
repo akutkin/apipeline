@@ -36,6 +36,7 @@ preflag: # See DP3 steps.preflag
     chan: #'[nchan-8..nchan]' # null
     blmin: # in meters
     freqrange: #'[1000..1310MHz]' # '[1440 .. 1470 MHz]' # freq range to flag
+    kwstring: # ''
 
 clean1: # wsclean setup (see https://wsclean.readthedocs.io/en/latest/)
     imagesize: 3072
@@ -134,6 +135,19 @@ clean5:
     multiscale: True
     clip_model_level: null
     kwstring: '-gridder wgridder -parallel-deconvolution 1400 -parallel-gridding 8 -deconvolution-channels 3'
+
+
+create_robust0: null # Create another image with Rbust=0
+
+clean6:
+    imagesize: 3072
+    pixelsize: 3
+    multifreq: 6
+    automask: 3.5
+    autothresh: 1.0
+    multiscale: True
+    clip_model_level: null
+    kwstring: '-use-wgridder -deconvolution-channels 3 -weight briggs 0 -weighting-rank-filter 3'
 
 ### facet clean (slow)
 facet_clean:
