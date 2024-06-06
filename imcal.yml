@@ -30,13 +30,17 @@ clean0: # initial clean
 ############################## PREFLAG ##########################################
 
 preflag: # See DP3 steps.preflag
-    baseline: # e.g. '[[RTB,*]]'
-    reltime: # e.g. '10:20+-20m'
-    abstime: # 15-Dec-2021/00:55..15-Dec-2021/01:45
-    chan: #'[nchan-8..nchan]' # null
-    blmin: # in meters
-    freqrange: #'[1000..1310MHz]' # '[1440 .. 1470 MHz]' # freq range to flag
-    kwstring: # ''
+    # expr: #'(s1 & s2)'
+    # s1.baseline: #'[[RTB,*]]' # e.g. '[[RTB,*]]'
+    # s2.timeofday: #'19:30:00..23:00:00'
+    # s2.reltime: '2:30:00..5:00:00'
+    # s3.chan: '[nchan-30..nchan]' # null
+    # baseline:
+    # s2.reltime: # e.g. '10:20+-20m'
+    # s2.abstime: '07-Apr-2021/23:10:09.0..' #15-Dec-2021/00:55..15-Dec-2021/01:45'
+    # blmin: # in meters
+    # freqrange: #'[1000..1310MHz]' # '[1440 .. 1470 MHz]' # freq range to flag
+    # kwstring: # ''
 
 clean1: # wsclean setup (see https://wsclean.readthedocs.io/en/latest/)
     imagesize: 3072

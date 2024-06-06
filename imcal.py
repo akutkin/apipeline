@@ -302,7 +302,7 @@ def preflag(msin, msout=None, **kwargs):
     """
     preflag data using DP3 preflag module
     """
-    if not any(kwargs.values()):
+    if (kwargs is None) or (not any(kwargs.values())):
         logging.debug('No preflag options specified. Skipping...')
         return msin
     msout = msout or '.'
@@ -629,11 +629,8 @@ def main(msin, steps='all', outbase=None, cfgfile=None, force=False, params=None
                 msin = split_ms(msin, msout_path=ms_split, startchan=20, nchan=288-28)
 
 
-    if 'preflag' in steps and (not os.path.exists(outbase+'_preflagged.MS') or force):
-        for k, v in cfg['preflag'].items():
-            if v:
-                kwarg = {k:v}
-                msin = preflag(msin, msout=outbase+'_preflagged.MS', **kwarg)
+    if 'preflag' in steps and (not os.path.exists(outbase+'_preflagged.MS') or force) and cfg['preflag']:
+        msin = preflag(msin, msout=outbase+'_preflagged.MS', **cfg['preflag'])
 
     if 'nvss' in steps and cfg['nvss']['nvsscal']:
         nvss_model = nvss_cutout(initial_img, nvsscat='/opt/nvss.csv.zip', cutoff=0.001)
@@ -740,37 +737,37 @@ def main(msin, steps='all', outbase=None, cfgfile=None, force=False, params=None
             ddsub, h5out = ddecal(dical3, clustered_sdb, msout=ddsub, h5out=h5_dd, **cfg['ddcal'])
 
 # Ghost removal
-    if True: # maybe make optional?
-        _ = remove_ghost_from_model(img_dical+'-sources.txt', fitsfile=img_dical+'-image.fits', radius=3)
-        _ = remove_baseline_offsets(ddsub)
+        if True: # maybe make optional?
+            _ = remove_ghost_from_model(img_dical+'-sources.txt', fitsfile=img_dical+'-image.fits', radius=3)
+            _ = remove_baseline_offsets(ddsub)
 
-# view the solutions and save figure
-        view_sols(h5_dd, outname=msbase+'_sols_ddcal')
+    # view the solutions and save figure
+            view_sols(h5_dd, outname=msbase+'_sols_ddcal')
 
-        if not force and os.path.exists(img_ddsub_1+'-image.fits'):
-            pass
-        else:
-            wsclean(ddsub, fitsmask=mask3, outname=img_ddsub_1, **cfg['clean5'])
-#TAO        wsclean(ddsub,outname=img_ddsub, **cfg['clean5'])
-
-
-        aomodel = bbs2model(img_dical+'-sources.txt', img_dical+'-model.ao', )
-        render(img_ddsub_1+'-image.fits', aomodel, out=img_ddcal_1+'-image.fits')
-
-        if not os.path.exists(mask4):
-            smoothImage(img_ddcal_1+'-image.fits')
-            i1 = makeNoiseImage(img_ddcal_1 +'-image.fits', img_ddsub_1 +'-residual.fits', )
-            i2 = makeNoiseImage(img_ddcal_1 +'-image-smooth.fits', img_ddsub_1 +'-residual.fits',low=True, )
-            makeCombMask(i1, i2, clip1=3.5, clip2=5, outname=mask4,)
-
-        if not force and os.path.exists(img_ddsub_2+'-image.fits'):
-            pass
-        else:
-            wsclean(ddsub, fitsmask=mask4, outname=img_ddsub_2, **cfg['clean5'])
+            if not force and os.path.exists(img_ddsub_1+'-image.fits'):
+                pass
+            else:
+                wsclean(ddsub, fitsmask=mask3, outname=img_ddsub_1, **cfg['clean5'])
+    #TAO        wsclean(ddsub,outname=img_ddsub, **cfg['clean5'])
 
 
-        aomodel = bbs2model(img_dical+'-sources.txt', img_dical+'-model.ao', )
-        render(img_ddsub_2+'-image.fits', aomodel, out=img_ddcal_2+'-image.fits', )
+            aomodel = bbs2model(img_dical+'-sources.txt', img_dical+'-model.ao', )
+            render(img_ddsub_1+'-image.fits', aomodel, out=img_ddcal_1+'-image.fits')
+
+            if not os.path.exists(mask4):
+                smoothImage(img_ddcal_1+'-image.fits')
+                i1 = makeNoiseImage(img_ddcal_1 +'-image.fits', img_ddsub_1 +'-residual.fits', )
+                i2 = makeNoiseImage(img_ddcal_1 +'-image-smooth.fits', img_ddsub_1 +'-residual.fits',low=True, )
+                makeCombMask(i1, i2, clip1=3.5, clip2=5, outname=mask4,)
+
+            if not force and os.path.exists(img_ddsub_2+'-image.fits'):
+                pass
+            else:
+                wsclean(ddsub, fitsmask=mask4, outname=img_ddsub_2, **cfg['clean5'])
+
+
+            aomodel = bbs2model(img_dical+'-sources.txt', img_dical+'-model.ao', )
+            render(img_ddsub_2+'-image.fits', aomodel, out=img_ddcal_2+'-image.fits', )
 
 
 # create image with robust=0 (Tom's mail 22 May 2024)
