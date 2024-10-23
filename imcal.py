@@ -497,6 +497,7 @@ def modify_conf(cfgfile, params=None):
     with open(cfgfile) as fp:
         data = yaml.load(fp)
     for key, val in params.items():
+        if data[key] is None: data[key] = {}
         data[key].update(val)
     with open(cfgfile, 'w') as out:
         yaml.dump(data, out)
@@ -524,20 +525,24 @@ def main(msin, steps='all', outbase=None, cfgfile=None, force=False, params=None
     t0 = Time.now()
 
 # copy config
+    default_cfgfile = 'imcal.yml'
     local_cfgfile = msbase + '.yml'
-    if cfgfile is None and not os.path.exists(local_cfgfile):
-        shutil.copy2('imcal.yml', local_cfgfile)
-    elif cfgfile is not None and cfgfile != local_cfgfile:
-        logging.info('Copying config from: %s', cfgfile)
-        shutil.copy2(cfgfile, local_cfgfile)
-    # else:
-        # logging.error('Check config file')
-    cfgfile = local_cfgfile
+    if cfgfile is not None and not os.path.exists(cfgfile):
+        logging.error('Can not find config file %s', cfgfile)
+        return
+    elif cfgfile is None:
+        logging.info('Copying the default config_fiel to %s', mspath)
+        shutil.copy2(default_cfgfile, f'{mspath}/imcal.yml')
+        cfgfile = f'{mspath}/imcal.yml'
+
+    if os.path.exists(local_cfgfile):
+        logging.warning('Local cfgfile found %s. Use -c flag to use it', local_cfgfile)
+
+
 
     logging.info('Using config file: %s', os.path.abspath(cfgfile))
 
     if params:
-        print(params)
         try:
             params = eval(params.replace("'", "\""))
             logging.warning('Modifying config file. Params: %s', params)
@@ -631,6 +636,9 @@ def main(msin, steps='all', outbase=None, cfgfile=None, force=False, params=None
 
     if 'preflag' in steps and (not os.path.exists(outbase+'_preflagged.MS') or force) and cfg['preflag']:
         msin = preflag(msin, msout=outbase+'_preflagged.MS', **cfg['preflag'])
+    elif 'preflag' in steps and os.path.exists(outbase+'_preflagged.MS') and not force:
+        logging.info('Using existing preflagged MS: %s', outbase+'_preflagged.MS')
+        msin = outbase+'_preflagged.MS'
 
     if 'nvss' in steps and cfg['nvss']['nvsscal']:
         nvss_model = nvss_cutout(initial_img, nvsscat='/opt/nvss.csv.zip', cutoff=0.001)
@@ -772,17 +780,17 @@ def main(msin, steps='all', outbase=None, cfgfile=None, force=False, params=None
 
 # create image with robust=0 (Tom's mail 22 May 2024)
         if cfg['create_robust0']:
-            if not os.path.exists(img_ddsmsub+'-image.fits'):
+            if not os.path.exists(img_ddsmsub+'-image.fits') or force:
                 wsclean(ddsub, fitsmask=mask4, outname=img_ddsmsub, **cfg['clean6'])
 
-            if not os.path.exists(mask5):
+            if not os.path.exists(mask5) or force:
                 render(img_ddsmsub+'-image.fits', aomodel, out=img_ddsmo+'-image.fits')
                 smoothImage(img_ddsmsub+'-residual.fits')
                 i1 = makeNoiseImage(img_ddsmo +'-image.fits', img_ddsmsub +'-residual.fits')
                 i2 = makeNoiseImage(img_ddsmsub +'-residual-smooth.fits', img_ddsmsub +'-residual.fits',low=True)
                 makeCombMask(i1, i2, outname=mask5, clip1=3.5, clip2=5)
 
-            if (not os.path.exists(img_ddsmsub+'-2-image.fits')):
+            if (not os.path.exists(img_ddsmsub+'-2-image.fits')) or force:
                 wsclean(ddsub, fitsmask=mask5,outname=img_ddsmsub+'-2', **cfg['clean6'])
 
             render(img_ddsmsub+'-2-image.fits', aomodel, out=img_ddsmo+'-2-image.fits')

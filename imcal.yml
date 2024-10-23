@@ -3,9 +3,7 @@
 #===========================================================================
 # global: # provide executables here
 
-# TODO:
-# adjust solution intervals based on unflagged data available
-# a better solutions plotting
+# TODO: introduce global parameters, like the same imagesize for all images
 
 ############################## SPLIT ##########################################
 split:
