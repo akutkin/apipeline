@@ -457,7 +457,7 @@ def view_sols(h5param, outname=None):
     # return fig1, ax1, fig2, ax2
 
 
-def remove_model_components_below_level(model, level=0.0, out=None):
+def remove_model_components_below_level(model, level=None, out=None):
     """
     Clip the model to be above the given level
 
@@ -664,6 +664,7 @@ def main(msin, steps='all', outbase=None, cfgfile=None, force=False, params=None
             logging.info('dical/clean1 step: Image exists, use --f to overwrite...')
         else:
             wsclean(dical0, fitsmask=mask0, outname=img1, **cfg['clean1']) # fast shallow clean
+            remove_model_components_below_level(img1+'-sources.txt', level=0.0)
             makesourcedb(img1+'-sources.txt', out=model1)
 
 # dical1
@@ -681,7 +682,7 @@ def main(msin, steps='all', outbase=None, cfgfile=None, force=False, params=None
             i1 = makeNoiseImage(img2 +'-image.fits', img2 +'-residual.fits', )
             i2 = makeNoiseImage(img2 +'-residual-smooth.fits', img2 +'-residual.fits', low=True, )
             makeCombMask(i1, i2, clip1=7, clip2=15, outname=mask1, )
-
+            remove_model_components_below_level(img2+'-sources.txt', level=0.0)
             makesourcedb(img2+'-sources.txt', out=model2, )
 
 # dical2
@@ -699,7 +700,7 @@ def main(msin, steps='all', outbase=None, cfgfile=None, force=False, params=None
             i1 = makeNoiseImage(img3 +'-image.fits', img3 +'-residual.fits', )
             i2 = makeNoiseImage(img3 +'-residual-smooth.fits', img3 +'-residual.fits', low=True, )
             makeCombMask(i1, i2, clip1=5, clip2=10, outname=mask2,)
-
+            remove_model_components_below_level(img3+'-sources.txt', level=0.0)
             makesourcedb(img3+'-sources.txt', out=model3)
 
 # determine the solution interval for amplitude calibration (Tom's mail on 11.10.2023)
@@ -763,9 +764,9 @@ def main(msin, steps='all', outbase=None, cfgfile=None, force=False, params=None
             render(img_ddsub_1+'-image.fits', aomodel, out=img_ddcal_1+'-image.fits')
 
             if not os.path.exists(mask4):
-                smoothImage(img_ddcal_1+'-image.fits')
+                smoothImage(img_ddcal_1+'-residual.fits')
                 i1 = makeNoiseImage(img_ddcal_1 +'-image.fits', img_ddsub_1 +'-residual.fits', )
-                i2 = makeNoiseImage(img_ddcal_1 +'-image-smooth.fits', img_ddsub_1 +'-residual.fits',low=True, )
+                i2 = makeNoiseImage(img_ddcal_1 +'-residual-smooth.fits', img_ddsub_1 +'-residual.fits',low=True, )
                 makeCombMask(i1, i2, clip1=3.5, clip2=5, outname=mask4,)
 
             if not force and os.path.exists(img_ddsub_2+'-image.fits'):
