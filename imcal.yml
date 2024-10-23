@@ -14,7 +14,7 @@ split:
 # calibrate against the NVSS catalog. Generally works well
 # except for cases with an extended Apertif source unresolved by NVSS
 nvss:
-    nvsscal: False
+    nvsscal: True
     # clip_model: 0.001 # Clip NVSS model to not to have sources weaker (Jy)
     solint: 240
     mode: 'phaseonly'
