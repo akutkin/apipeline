@@ -764,9 +764,9 @@ def main(msin, steps='all', outbase=None, cfgfile=None, force=False, params=None
             render(img_ddsub_1+'-image.fits', aomodel, out=img_ddcal_1+'-image.fits')
 
             if not os.path.exists(mask4):
-                smoothImage(img_ddcal_1+'-residual.fits')
+                smoothImage(img_ddsub_1+'-residual.fits')
                 i1 = makeNoiseImage(img_ddcal_1 +'-image.fits', img_ddsub_1 +'-residual.fits', )
-                i2 = makeNoiseImage(img_ddcal_1 +'-residual-smooth.fits', img_ddsub_1 +'-residual.fits',low=True, )
+                i2 = makeNoiseImage(img_ddsub_1 +'-residual-smooth.fits', img_ddsub_1 +'-residual.fits',low=True, )
                 makeCombMask(i1, i2, clip1=3.5, clip2=5, outname=mask4,)
 
             if not force and os.path.exists(img_ddsub_2+'-image.fits'):
